@@ -1,0 +1,195 @@
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+header.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 80px;
+    background: linear-gradient(to bottom, #3f3e3e, #33333321);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.navbar img {
+    height: 50px;
+}
+
+main.main-content {
+    padding-top: 60px;
+    /* Adjust for header height */
+}
+
+/* Rotate arrow */
+.accordion-button .arrow {
+    transition: transform 0.3s ease;
+}
+
+.accordion-button.collapsed .arrow {
+    transform: rotate(0deg);
+    /* Down arrow for collapsed state */
+}
+
+.accordion-button:not(.collapsed) .arrow {
+    transform: rotate(180deg);
+    /* Up arrow for expanded state */
+}
+
+.accordion-button img {
+    transform: rotate(-45deg);
+    margin-right: 15px;
+}
+
+.accordion-body p {
+    margin-bottom: 5px;
+}
+
+.green-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: green;
+    border-radius: 50%;
+    margin-left: 10px;
+    /* Adjust spacing if needed */
+    margin-right: 5px;
+}
+
+.red-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #c70000;
+    border-radius: 50%;
+    margin-left: 10px;
+    /* Adjust spacing if needed */
+    margin-right: 5px;
+}
+
+.fixed-plugin .card-body {
+    max-height: 100% !important;
+    /* Adjust the height as needed */
+    overflow-y: auto !important;
+}
+
+.scrollable-container {
+    max-height: 300px;
+    /* Set the max height as needed */
+    overflow-y: auto;
+    padding-right: 10px;
+    /* Adjust padding to prevent content from cutting off */
+}
+
+/* Hide scrollbar but keep scrolling */
+.scrollable-container::-webkit-scrollbar {
+    display: none;
+    /* Chrome, Safari, and Opera */
+}
+
+.scrollable-container {
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+}
+
+.searchBar {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+}
+
+#searchQueryInput {
+    width: 88%;
+    height: 2.8rem;
+    background: #f5f5f5;
+    outline: none;
+    border: none;
+    border-radius: 1.625rem;
+    padding: 0 3.5rem 0 1.5rem;
+    font-size: 1rem;
+}
+
+#searchQuerySubmit {
+    width: 3.5rem;
+    height: 2.8rem;
+    margin-left: -3.5rem;
+    background: none;
+    border: none;
+    outline: none;
+}
+
+#searchQuerySubmit:hover {
+    cursor: pointer;
+}
+
+@keyframes blink {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+/* Custom styling for warning icon */
+.warning-icon {
+    font-size: 24px;   /* Adjust the size of the icon */
+    width: 24px;       /* Adjust the width */
+    height: 24px;      /* Adjust the height */
+    line-height: 24px; /* Align the icon vertically */
+    display: inline-block;
+    text-align: center;
+    animation: blink 1s infinite; /* Apply blinking effect */
+}
+
+/* Styling the location legend control */
+.location-legend {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
+    color: rgb(0, 0, 0);
+    border-radius: 5px;
+    padding: 10px;
+}
+
+.location-legend h5 {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.location-legend div {
+    margin-bottom: 0;
+}
+
+.recenter {
+    color: #b6b6b6;
+    cursor: pointer;
+}
+
+.recenter:hover {
+    color: #268bff;
+    cursor: pointer;
+}
+
+.recenter.active {
+    color: #268bff; /* Active color */
+}
+
+.recenter.inactive {
+    color: #b6b6b6; /* Inactive color */
+}

@@ -11,6 +11,10 @@ let previousTargetPositions = [];
 let targetPositionChangeCounters = [];
 let droneMarkers = []; // Store markers for each drone
 let selectedDrone = -1;
+let wasZoomed = false;
+let userZooming = false;
+let isHMBData = false;
+const drawnWaypoints = new Map();
 
 const targetMarkers = {};
 const droneTargetStates = {};
@@ -22,7 +26,7 @@ const renderedDrones = new Set();
 
 document.addEventListener("DOMContentLoaded", function () {
     // Map setup
-    var map = L.map('map').setView([2.9100729431148187, 101.65520813904638], 18); // Adjust center and zoom
+    var map = L.map('map').setView([5.14663451175841, 100.498455762863], 18); // Adjust center and zoom
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
     }).addTo(map);
@@ -120,70 +124,124 @@ document.addEventListener("DOMContentLoaded", function () {
 
         simulatedDroneArr.forEach(function (drone) {
             const droneHTML = `
-                            <div class="accordion-item">
-                                <h6 class="accordion-header" id="heading-${drone.id}">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                                        data-bs-target="#collapse-${drone.id}" aria-expanded="false" aria-controls="collapse-${drone.id}">
-                                        <img src="./assets/img/icons/svg/drone-svgrepo-com.svg" alt="Drone Icon">
-                                        Drone ${drone.id}
-                                        <span class="ms-auto">
-                                            <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
-                                            <span class="ms-2 text-danger fw-bold" id="drone-connect-${drone.id}">Disconnected</span>
-                                        </span>
-                                    </button>
-                                </h6>
-                                <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
-                                    <div class="accordion-body" id="drone-details-${drone.id}">
-                                    </div>
-                                </div>
-                            </div>`;
+                <div class="accordion-item">
+                    <h6 class="accordion-header" id="heading-${drone.id}">
+                        <button class="accordion-button collapsed" type="button">
+                            <img id="drone-icon-${drone.id}" src="./assets/img/icons/svg/grey-drone.svg" alt="Drone Icon">
+                            
+                            <span class="drone-toggle" data-bs-toggle="collapse"
+                                data-bs-target="#collapse-${drone.id}" aria-expanded="false" 
+                                aria-controls="collapse-${drone.id}">
+                                Drone ${drone.id}
+                            </span>
+        
+                            <span class="ms-auto d-flex align-items-center gap-2">
+                                <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
+                                <label class="switch btn-color-mode-switch">
+                                    <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
+                                    <label for="data_mode-${drone.id}" data-on="PI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                </label>
+                            </span>
+                        </button>
+                    </h6>
+                    <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
+                        <div class="accordion-body" id="drone-details-${drone.id}">
+                        </div>
+                    </div>
+                </div>`;
             droneDataContainer.innerHTML += droneHTML;
         });
+
+        // Prevent accordion toggle when clicking on the recenter icon or switch
+        $(document).on("click", ".recenter, .btn-color-mode-switch input", function (event) {
+            event.stopPropagation();
+        });
+
+        // Attach event listener to dynamically created toggle switches
+        $(document).on("change", "input[name='data_mode']", function () {
+            dataModePreview(this);
+        });
+
+        function dataModePreview(mode) {
+            let droneId = $(mode).data("drone-id"); // Get the drone ID from the data attribute
+            isHMBData = !$(mode).prop("checked");
+        }
 
         // Add event listener after elements are created
         const recenterIcons = document.querySelectorAll('.recenter');
 
         recenterIcons.forEach(icon => {
             icon.addEventListener('click', function (event) {
+                event.stopPropagation(); // Prevent click from affecting accordion
+
                 const droneId = parseInt(event.target.dataset.droneId, 10);
-                
-                // Update selectedDrone
-                selectedDrone = droneId;
-                console.log("Selected Drone:", selectedDrone);
-        
-                // Reset all icons to inactive state
-                recenterIcons.forEach(icon => icon.classList.remove('active'));
-                recenterIcons.forEach(icon => icon.classList.add('inactive'));
-        
-                // Set the clicked icon to active state
-                icon.classList.add('active');
-                icon.classList.remove('inactive');
+
+                // Check if the clicked icon is already active
+                if (icon.classList.contains('active')) {
+                    icon.classList.remove('active');
+                    icon.classList.add('inactive');
+                    selectedDrone = -1; // Reset selectedDrone
+                    console.log("Selected Drone: None");
+                } else {
+                    selectedDrone = droneId;
+                    console.log("Selected Drone:", selectedDrone);
+
+                    // Reset all icons to inactive state
+                    recenterIcons.forEach(icon => {
+                        icon.classList.remove('active');
+                        icon.classList.add('inactive');
+                    });
+
+                    // Set the clicked icon to active state
+                    icon.classList.add('active');
+                    icon.classList.remove('inactive');
+                }
             });
         });
+
     }
 
     updateDroneStatus();
 
     function fetchDroneData() {
         try {
-            const apiURL = 'http://localhost:3000/drone_feedback';
+            const droneApiURL = 'http://localhost:3000/drone_feedback';
+            const missionApiURL = 'http://localhost:3000/active_mission_list';
+            const hmbApiURL = 'http://localhost:3000/hmb_drone_feedback';
 
             const options = {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json'
                 }
-            }
+            };
 
-            fetch(apiURL, options)
-                .then(response => {
+            Promise.all([
+                fetch(droneApiURL, options).then(response => {
                     if (!response.ok) {
-                        throw new Error('Network response was not ok');
+                        throw new Error('Failed to fetch drone data');
+                    }
+                    return response.json();
+                }),
+                fetch(missionApiURL, options).then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch mission data');
+                    }
+                    return response.json();
+                }),
+                fetch(hmbApiURL, options).then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch mission data');
                     }
                     return response.json();
                 })
-                .then(data => {
-                    updateDroneDetails(data);
+            ])
+                .then(([droneData, missionData, hmbData]) => {
+                    updateDroneDetails(droneData, hmbData);
+                    updateMissionDetails(missionData);
+                })
+                .catch(error => {
+                    console.error(error);
                 });
 
         } catch (error) {
@@ -193,17 +251,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setInterval(function () { fetchDroneData() }, 500);
 
-    function updateDroneDetails(droneData) {
-        Object.values(droneData).forEach(drone => {
-            const droneDetailsElement = document.getElementById(`drone-details-${drone.id}`);
-            const connectionStatusElement = document.getElementById(`drone-connect-${drone.id}`);
+    function updateDroneDetails(droneData, hmbData) {
+        Object.values(droneData).forEach(data => {
+            const toggleElement = document.getElementById(`data_mode-${data.id}`);
+            const droneDetailsElement = document.getElementById(`drone-details-${data.id}`);
+            const connectionStatusElement = document.getElementById(`drone-connect-${data.id}`);
+            const droneIcon = document.getElementById(`drone-icon-${data.id}`);
 
-            // console.log(drone.feedback)
+            if (!toggleElement || !droneDetailsElement) return;
+
+            // Determine which dataset to use based on toggle state
+            const isHMB = toggleElement.checked;
+            const drone = isHMB ? hmbData[data.id] : droneData[data.id];
 
             if (droneDetailsElement) {
                 droneDetailsElement.innerHTML = `
                     <hr class="horizontal dark my-1">
-                    <p><strong>Connection Status:</strong> ${drone.feedback.connectionStatus}</p>
+                    <span><strong>Connection Status:</strong></span><span class="${drone.feedback.connectionStatus == "Connected" ? "connected" : "disconnected"}"> ${drone.feedback.connectionStatus}</span>
                     <p><strong>Drone Timestamp:</strong> ${drone.feedback.droneTimestamp}</p>
                     <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
                     <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
@@ -215,6 +279,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     <p><strong>Weather State:</strong> ${drone.feedback.weatherState}</p>
                     <p><strong>Manned Flight State:</strong> ${drone.feedback.mannedFlightState}</p>
                 `;
+
+                if (drone.feedback.connectionStatus == "Connected") {
+                    droneIcon.src = "./assets/img/icons/svg/blue-drone.svg";
+                } else {
+                    droneIcon.src = "./assets/img/icons/svg/grey-drone.svg";
+                }
 
                 // Check if the FSM state is "Mission Finished"
                 if (drone.feedback.fsmState === "Mission finished") {
@@ -362,6 +432,82 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     }
 
+    const completedMissions = new Set(); // Track completed missions
+
+    function updateMissionDetails(missionData) {
+
+        if (!missionData || !Array.isArray(missionData)) return;
+
+        missionData.forEach(mission => {
+            const { mission_id, mission_complete, afpp_waypoints, closest_pickup_point, closest_dropoff_point, home_point } = mission;
+
+            // If the mission is complete, remove the drawn path and markers
+            if (mission_complete) {
+                if (drawnWaypoints.has(mission_id)) {
+                    drawnWaypoints.get(mission_id).forEach(layer => map.removeLayer(layer));
+                    drawnWaypoints.delete(mission_id);
+                }
+                completedMissions.add(mission_id); // Mark this mission as completed
+                return; // Stop further processing
+            }
+
+            // If the mission is already marked as complete, prevent redrawing
+            if (completedMissions.has(mission_id)) return;
+
+            // If waypoints are already drawn, do nothing
+            if (drawnWaypoints.has(mission_id)) return;
+
+            if (afpp_waypoints) {
+                const { pickup, dropoff, rtl } = afpp_waypoints;
+
+                console.log("Drawing planned path for mission:", mission_id);
+
+                let layers = [];
+
+                // Draw planned routes
+                if (pickup && pickup.length > 1) layers.push(drawLine(pickup, "grey"));
+                if (dropoff && dropoff.length > 1) layers.push(drawLine(dropoff, "grey"));
+                if (rtl && rtl.length > 1) layers.push(drawLine(rtl, "grey"));
+
+                // Add PNG markers for closest pickup and dropoff points
+                if (closest_pickup_point) {
+                    layers.push(addMarker(closest_pickup_point, "assets/img/icons/drone/pickup.png"));
+                }
+                if (closest_dropoff_point) {
+                    layers.push(addMarker(closest_dropoff_point, "assets/img/icons/drone/dropoff.png"));
+                }
+                if (home_point) {
+                    layers.push(addMarker(home_point, "assets/img/icons/drone/home.png"));
+                }
+
+                drawnWaypoints.set(mission_id, layers.filter(layer => layer)); // Store drawn layers
+            }
+        });
+    }
+
+
+    function drawLine(coordinates, color) {
+        if (!coordinates || coordinates.length < 2) return null;
+
+        let latLngs = coordinates.map(coord => [coord[0], coord[1]]);
+        return L.polyline(latLngs, { color: color }).addTo(map);
+    }
+
+    function addMarker(coordinate, iconUrl) {
+
+        console.log(coordinate.length)
+        if (!coordinate) return null;
+
+        let icon = L.icon({
+            iconUrl: iconUrl, // Path to your PNG file
+            iconSize: [40, 40], // Adjust icon size as needed
+            iconAnchor: [15, 15], // Set anchor point (bottom center)
+            popupAnchor: [0, -30] // Adjust popup position if needed
+        });
+
+        return L.marker([coordinate.lat, coordinate.long], { icon }).addTo(map);
+    }
+
     // Function to clear historical path and remove polyline for a specific drone
     function clearDroneHistoricalPath(droneId) {
         // Remove the path from localStorage
@@ -374,21 +520,45 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
+    // Detect when user starts manually zooming
+    map.on('zoomstart', () => {
+        userZooming = true;
+    });
+
+    map.on('zoomend', () => {
+        userZooming = false;
+    });
+
     // Add a property to track the drone's heading
     function updateDronePosition(drone) {
-        console.log(selectedDrone)
         const droneMarker = multi_drone_indicator[drone.id];
         if (droneMarker) {
             droneMarker.setLatLng(drone.feedback.currentPosition);
             droneMarker.setRotationAngle(drone.feedback.currentHeading);
 
             if (selectedDrone !== -1 && drone.id === selectedDrone) {
-                map.setView(L.latLng(drone.feedback.currentPosition[0], drone.feedback.currentPosition[1]), map.getMaxZoom());
+                const redDroneIcon = L.icon({
+                    iconUrl: 'assets/img/icons/drone/drone-red.png',
+                    iconSize: [40, 40],
+                    iconAnchor: [40 / 2, 40 / 2]
+                });
+                droneMarker.setIcon(redDroneIcon);
+
+                // Recenter the map only if the user isn't zooming
+                if (!userZooming) {
+                    map.setView(drone.feedback.currentPosition);
+                }
             } else if (selectedDrone === -1) {
                 // Reset the map to its default center and zoom level when no drone is selected
-                const defaultCenter = [2.9100729431148187, 101.65520813904638]; // Replace with your default center
-                const defaultZoom = 18; // Replace with your default zoom level
-                map.setView(defaultCenter, defaultZoom);
+                const greenDroneIcon = L.icon({
+                    iconUrl: 'assets/img/icons/drone/drone-green.png',
+                    iconSize: [40, 40],
+                    iconAnchor: [40 / 2, 40 / 2]
+                });
+                droneMarker.setIcon(greenDroneIcon);
+                // const defaultCenter = [5.14663451175841, 100.498455762863];
+                // const defaultZoom = 18;
+                // map.setView(defaultCenter);
             }
         }
     }
@@ -410,9 +580,11 @@ document.addEventListener("DOMContentLoaded", function () {
             // Update the polyline on the map
             if (droneMarkers[drone.id].historicalPath) {
                 droneMarkers[drone.id].historicalPath.setLatLngs(storedPath);
+                droneMarkers[drone.id].historicalPath.bringToFront();
             } else {
                 const polyline = L.polyline(storedPath, { color: 'blue' }).addTo(map);
                 droneMarkers[drone.id].historicalPath = polyline;
+                polyline.bringToFront();
             }
 
         }
@@ -544,16 +716,26 @@ document.addEventListener("DOMContentLoaded", function () {
             const droneHTML = `
                 <div class="accordion-item">
                     <h6 class="accordion-header" id="heading-${drone.id}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
-                            data-bs-target="#collapse-${drone.id}" aria-expanded="false" aria-controls="collapse-${drone.id}">
-                            <img src="./assets/img/icons/svg/drone-svgrepo-com.svg" alt="Drone Icon">
-                            Drone ${drone.id}
-                            <span class="ms-auto text-danger fw-bold" id="drone-connect-${drone.id}">${drone.feedback.connectionStatus}</span>
+                        <button class="accordion-button collapsed" type="button">
+                            <img id="drone-icon-${drone.id}" src="./assets/img/icons/svg/grey-drone.svg" alt="Drone Icon">
+                            
+                            <span class="drone-toggle" data-bs-toggle="collapse"
+                                data-bs-target="#collapse-${drone.id}" aria-expanded="false" 
+                                aria-controls="collapse-${drone.id}">
+                                Drone ${drone.id}
+                            </span>
+        
+                            <span class="ms-auto d-flex align-items-center gap-2">
+                                <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
+                                <label class="switch btn-color-mode-switch">
+                                    <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
+                                    <label for="data_mode-${drone.id}" data-on="PI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                </label>
+                            </span>
                         </button>
                     </h6>
                     <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
                         <div class="accordion-body" id="drone-details-${drone.id}">
-                            <!-- Drone details will be dynamically updated here -->
                         </div>
                     </div>
                 </div>`;
@@ -564,15 +746,15 @@ document.addEventListener("DOMContentLoaded", function () {
             if (droneDetailsElement) {
                 droneDetailsElement.innerHTML = `
                     <hr class="horizontal dark my-1">
-                    <p><strong>Connection Status:</strong> ${drone.feedback.connectionStatus}</p>
+                    <span><strong>Connection Status:</strong></span><span class="${drone.feedback.connectionStatus == "Connected" ? "connected" : "disconnected"}"> ${drone.feedback.connectionStatus}</span>
                     <p><strong>Drone Timestamp:</strong> ${drone.feedback.droneTimestamp}</p>
                     <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
                     <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
                     <p><strong>Current Position:</strong> [${drone.feedback.currentPosition.join(", ")}]</p>
-                    <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed} m/s</p>
-                    <p><strong>Heading:</strong> ${drone.feedback.currentHeading}°</p>
+                    <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed.toFixed(2)} m/s</p>
+                    <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
                     <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget} m</p>
-                    <p><strong>Battery Voltage:</strong> ${drone.feedback.batteryVoltage} V</p>
+                    <p><strong>Battery Voltage:</strong> ${drone.feedback.batteryVoltage.toFixed(2)} V</p>
                     <p><strong>Weather State:</strong> ${drone.feedback.weatherState}</p>
                     <p><strong>Manned Flight State:</strong> ${drone.feedback.mannedFlightState}</p>
                 `;

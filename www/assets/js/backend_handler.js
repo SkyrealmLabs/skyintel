@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
                                 <label class="switch btn-color-mode-switch">
                                     <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
-                                    <label for="data_mode-${drone.id}" data-on="PI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                    <label for="data_mode-${drone.id}" data-on="RPI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
                                 </label>
                             </span>
                         </button>
@@ -205,9 +205,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function fetchDroneData() {
         try {
-            const droneApiURL = 'http://localhost:3000/drone_feedback';
-            const missionApiURL = 'http://localhost:3000/active_mission_list';
-            const hmbApiURL = 'http://localhost:3000/hmb_drone_feedback';
+            const droneApiURL = 'https://gcs.zulsyah.com/rpi_drone_feedback';
+            const missionApiURL = 'https://gcs.zulsyah.com/active_mission_list';
+            const hmbApiURL = 'https://gcs.zulsyah.com/hmb_drone_feedback';
 
             const options = {
                 method: 'GET',
@@ -729,7 +729,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
                                 <label class="switch btn-color-mode-switch">
                                     <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
-                                    <label for="data_mode-${drone.id}" data-on="PI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                    <label for="data_mode-${drone.id}" data-on="RPI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
                                 </label>
                             </span>
                         </button>

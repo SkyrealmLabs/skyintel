@@ -264,6 +264,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const isHMB = toggleElement.checked;
             const drone = isHMB ? hmbData[data.id] : droneData[data.id];
 
+            const pickupETA = timeFormat(drone.eta.pickup);
+            const dropoffETA = timeFormat(drone.eta.dropoff);
+            const homeETA = timeFormat(drone.eta.rtl);
+
             if (droneDetailsElement) {
                 droneDetailsElement.innerHTML = `
                     <hr class="horizontal dark my-1">
@@ -276,8 +280,9 @@ document.addEventListener("DOMContentLoaded", function () {
                     <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
                     <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget} m</p>
                     <p><strong>Battery Voltage:</strong> ${drone.feedback.batteryVoltage.toFixed(2)} V</p>
-                    <p><strong>Weather State:</strong> ${drone.feedback.weatherState}</p>
-                    <p><strong>Manned Flight State:</strong> ${drone.feedback.mannedFlightState}</p>
+                    <p><strong>ETA to Pickup Point:</strong> ${pickupETA}</p>
+                    <p><strong>ETA to Dropoff Point:</strong> ${dropoffETA}</p>
+                    <p><strong>ETA to Home Point:</strong> ${homeETA}</p>
                 `;
 
                 if (drone.feedback.connectionStatus == "Connected") {
@@ -433,6 +438,19 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const completedMissions = new Set(); // Track completed missions
+
+    function timeFormat(eta) {
+        const formattedTime = eta !== "N/A"
+                ? new Date(eta).toLocaleTimeString("en-MY", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                    timeZone: "Asia/Kuala_Lumpur"
+                })
+                : "N/A";
+        
+        return formattedTime
+    }
 
     function updateMissionDetails(missionData) {
 

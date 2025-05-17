@@ -139,7 +139,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
                                 <label class="switch btn-color-mode-switch">
                                     <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
-                                    <label for="data_mode-${drone.id}" data-on="RPI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                    <label for="data_mode-${drone.id}" data-on="HMB" data-off="RPI" class="btn-color-mode-switch-inner"></label>
                                 </label>
                             </span>
                         </button>
@@ -729,7 +729,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                 <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
                                 <label class="switch btn-color-mode-switch">
                                     <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
-                                    <label for="data_mode-${drone.id}" data-on="RPI" data-off="HMB" class="btn-color-mode-switch-inner"></label>
+                                    <label for="data_mode-${drone.id}" data-on="HMB" data-off="RPI" class="btn-color-mode-switch-inner"></label>
                                 </label>
                             </span>
                         </button>

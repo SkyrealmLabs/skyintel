@@ -284,3 +284,128 @@ main.main-content {
 .btn-color-mode-switch input[type="checkbox"]:checked ~ .alert{
     display: block;
 }
+
+.rtl-button {
+    display: flex;
+    gap: 10px;
+}
+
+.blinking-icon {
+  animation: blinker 1s linear infinite;
+}
+
+@keyframes blinker {
+  50% {
+    opacity: 0;
+  }
+}
+
+/*********************** Toast Notification ************************/
+/* Toast container */
+.modern-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Toast box */
+.modern-toast {
+  width: 320px;
+  display: flex;
+  align-items: flex-start;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  position: relative;
+  animation: slideIn 0.3s ease, fadeOut 0.3s ease 3.8s forwards;
+}
+
+/* Icon box */
+.toast-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-size: 18px;
+  color: #fff;
+}
+
+/* Toast content */
+.toast-content {
+  flex: 1;
+}
+
+.toast-title {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.toast-message {
+  font-size: 14px;
+  color: #555;
+}
+
+/* Close button */
+.toast-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #888;
+  cursor: pointer;
+}
+
+/* Color types */
+.toast-success .toast-icon {
+  background-color: #28c76f;
+}
+
+.toast-error .toast-icon {
+  background-color: #ea5455;
+}
+
+.toast-warning .toast-icon {
+  background-color: #ff9f43;
+}
+
+.toast-info .toast-icon {
+  background-color: #00cfe8;
+}
+
+/* Animations */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+.drone-video-feed {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+
+}

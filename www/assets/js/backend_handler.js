@@ -136,6 +136,7 @@ document.addEventListener("DOMContentLoaded", function () {
                             </span>
         
                             <span class="ms-auto d-flex align-items-center gap-2">
+                                <div class="error-state-drone-${drone.id}"></div>
                                 <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
                                 <label class="switch btn-color-mode-switch">
                                     <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
@@ -145,8 +146,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         </button>
                     </h6>
                     <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
-                        <div class="accordion-body" id="drone-details-${drone.id}">
-                        </div>
+                        <div class="accordion-body" id="drone-details-${drone.id}"></div>
+                        <div id="rtl-button-${drone.id}" class="rtl-button"></div>
                     </div>
                 </div>`;
             droneDataContainer.innerHTML += droneHTML;
@@ -272,14 +273,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 droneDetailsElement.innerHTML = `
                     <hr class="horizontal dark my-1">
                     <span><strong>Connection Status:</strong></span><span class="${drone.feedback.connectionStatus == "Connected" ? "connected" : "disconnected"}"> ${drone.feedback.connectionStatus}</span>
-                    <p><strong>Drone Timestamp:</strong> ${drone.feedback.droneTimestamp}</p>
+                    <p><strong>Drone Timestamp:</strong> ${convertToReadableTimestamp(drone.feedback.droneTimestamp)}</p>
                     <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
                     <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
                     <p><strong>Current Position:</strong> [${drone.feedback.currentPosition.join(", ")}]</p>
                     <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed.toFixed(2)} m/s</p>
                     <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
-                    <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget} m</p>
-                    <p><strong>Battery Voltage:</strong> ${drone.feedback.batteryVoltage.toFixed(2)} V</p>
+                    <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget.toFixed(1)} m</p>
+                    <p><strong>Battery Level:</strong> ${drone.feedback.batteryLevel.toFixed(2)} %</p>
                     <p><strong>ETA to Pickup Point:</strong> ${pickupETA}</p>
                     <p><strong>ETA to Dropoff Point:</strong> ${dropoffETA}</p>
                     <p><strong>ETA to Home Point:</strong> ${homeETA}</p>
@@ -308,6 +309,51 @@ document.addEventListener("DOMContentLoaded", function () {
                 // Update the drone position and heading
                 updateDronePosition(drone);
 
+                const rtlButtonContainer = document.getElementById(`rtl-button-${drone.id}`);
+                const errorStateContainer = document.querySelector(`.error-state-drone-${drone.id}`);
+                const droneVideoFeedContainer = document.getElementById("drone-video-feed");
+
+                // Handle Forward DAA conflicted state
+                if (drone.feedback.fsmState === 'Forward DAA conflict' && !renderedDrones.has(drone.id)) {
+                    console.log(`FSM State is Forward DAA conflicted for Drone ${drone.id}, rendering RTL & Proceed buttons.`);
+                    showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
+
+                    if (rtlButtonContainer && rtlButtonContainer.children.length === 0) {
+                        // RTL Button
+                        const rtlBtn = document.createElement('button');
+                        rtlBtn.textContent = 'RTL';
+                        rtlBtn.classList.add('btn', 'btn-warning', 'w-100', 'justify-content-center');
+                        rtlBtn.addEventListener('click', () => {
+                            console.log(`RTL requested for Drone ${drone.id}`);
+                            // Trigger RTL logic
+                            sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
+                        });
+
+                        // Proceed Button
+                        const proceedBtn = document.createElement('button');
+                        proceedBtn.textContent = 'Proceed';
+                        proceedBtn.classList.add('btn', 'btn-info', 'w-100', 'justify-content-center');
+                        proceedBtn.addEventListener('click', () => {
+                            console.log(`Proceed selected for Drone ${drone.id}`);
+                            // Trigger Proceed logic
+                            proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
+                        });
+
+                        rtlButtonContainer.appendChild(rtlBtn);
+                        rtlButtonContainer.appendChild(proceedBtn);
+
+                    }
+
+                    if (errorStateContainer && errorStateContainer.children.length === 0) {
+                        const icon = document.createElement('i');
+                        icon.classList.add('bi', 'bi-exclamation-triangle-fill', 'text-warning', 'me-1', 'blinking-icon');
+                        icon.setAttribute('title', 'Forward DAA Conflicted');
+                        errorStateContainer.appendChild(icon);
+                    }
+
+                    renderedDrones.add(drone.id);
+                }
+
                 if (connectionStatusElement) {
                     connectionStatusElement.innerText = drone.feedback.connectionStatus;
                     connectionStatusElement.classList.remove('text-danger', 'text-success', 'text-warning');
@@ -319,8 +365,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         connectionStatusElement.classList.add('text-warning');
                     }
 
-                    // Check for FSM state "Fatal" and show warning icon if applicable
-                    if (drone.feedback.fsmState === 'Fatal' && !renderedDrones.has(drone.id)) {
+                    // Handle Fatal error state
+                    if (drone.feedback.fsmState === 'Fatal error' && !renderedDrones.has(drone.id)) {
                         console.log(`FSM State is Fatal for Drone ${drone.id}, adding warning icon and rendering prediction.`);
 
                         const connectionStatusElement = document.getElementById(`drone-connect-${drone.id}`);
@@ -385,6 +431,9 @@ document.addEventListener("DOMContentLoaded", function () {
                         // Mark this drone as having been rendered
                         renderedDrones.add(drone.id);
                     }
+
+
+
                 }
 
                 // Get the targetPosition data (coordinates)
@@ -441,14 +490,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function timeFormat(eta) {
         const formattedTime = eta !== "N/A"
-                ? new Date(eta).toLocaleTimeString("en-MY", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                    timeZone: "Asia/Kuala_Lumpur"
-                })
-                : "N/A";
-        
+            ? new Date(eta).toLocaleTimeString("en-MY", {
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+                timeZone: "Asia/Kuala_Lumpur"
+            })
+            : "N/A";
+
         return formattedTime
     }
 
@@ -536,6 +585,137 @@ document.addEventListener("DOMContentLoaded", function () {
             map.removeLayer(droneMarkers[droneId].historicalPath);
             droneMarkers[droneId].historicalPath = null; // Clear the polyline reference
         }
+    }
+
+    function sendRTLCommandToDrone(droneId, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer) {
+        const rtlApiURL = 'https://gcs.zulsyah.com/request_rtl';
+        fetch(rtlApiURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drone_id: droneId })
+        })
+            .then(res => res.json())
+            .then(data => {
+                console.log(`RTL triggered for drone ${droneId}:`, data);
+                showModernToast('success', 'Success!', `Drone ${droneId} will Return To Launch.`);
+                requestDroneVideoStream(droneId, droneVideoFeedContainer)
+                rtlButtonContainer.innerHTML = '';
+                errorStateContainer.innerHTML = '';
+            })
+            .catch(err => {
+                console.error('RTL request failed:', err);
+                alert('Failed to trigger RTL');
+            });
+    }
+
+    function proceedWithMission(droneId, rtlButtonContainer, errorStateContainer) {
+        const resumeMissionApiURL = 'https://gcs.zulsyah.com/resume_mission';
+        fetch(resumeMissionApiURL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ drone_id: droneId })
+        })
+            .then(res => res.json())
+            .then(data => {
+                console.log(`Resume mission for drone ${droneId}:`, data);
+                showModernToast('info', 'Info!', `Resume mission for drone ${droneId}`);
+                rtlButtonContainer.innerHTML = '';
+                errorStateContainer.innerHTML = '';
+            })
+            .catch(err => {
+                console.error('Resume mission request failed:', err);
+                alert('Resume mission to trigger RTL');
+            });
+    }
+
+    function showModernToast(type, title, message) {
+        const container = document.getElementById('modern-toast-container');
+
+        const toast = document.createElement('div');
+        toast.className = `modern-toast toast-${type}`;
+
+        // Icon symbol
+        let iconChar = '✓';
+        if (type === 'error') iconChar = '✖';
+        if (type === 'warning') iconChar = '!';
+        if (type === 'info') iconChar = 'ℹ';
+
+        toast.innerHTML = `
+            <div class="toast-icon">${iconChar}</div>
+            <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+            </div>
+            <button class="toast-close" aria-label="Close">&times;</button>
+        `;
+
+        // Close button behavior
+        toast.querySelector('.toast-close').addEventListener('click', () => {
+            toast.remove();
+        });
+
+        container.appendChild(toast);
+
+        // Auto-remove after 4s
+        setTimeout(() => {
+            toast.remove();
+        }, 4000);
+    }
+
+    function requestDroneVideoStream(droneId, droneVideoFeedContainer) {
+        // MJPEG Stream Container
+        const streamContainer = document.createElement('div');
+        streamContainer.style.position = 'relative';
+        streamContainer.style.display = 'inline-block';
+        streamContainer.style.width = '420px';
+        streamContainer.style.height = '236px';
+        streamContainer.style.marginTop = '10px';
+
+        // MJPEG Image
+        const mjpegImg = document.createElement('img');
+        mjpegImg.id = `drone-stream-${droneId}`;
+        mjpegImg.src = `https://gcs.zulsyah.com/drone_camera/${droneId}`;
+        mjpegImg.width = 420;
+        mjpegImg.height = 236;
+        mjpegImg.alt = `Live stream from Drone ${droneId}`;
+        mjpegImg.style.display = 'block';
+        mjpegImg.style.borderRadius = '6px';
+
+        // Overlay Text
+        const overlayText = document.createElement('div');
+        overlayText.textContent = `🔴 Live stream from Drone ${droneId}`;
+        overlayText.style.position = 'absolute';
+        overlayText.style.top = '8px';
+        overlayText.style.left = '8px';
+        overlayText.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+        overlayText.style.color = 'white';
+        overlayText.style.padding = '4px 8px';
+        overlayText.style.borderRadius = '4px';
+        overlayText.style.fontSize = '14px';
+        overlayText.style.fontWeight = 'bold';
+
+        // Close Button (Bootstrap Icon)
+        const closeBtn = document.createElement('i');
+        closeBtn.classList.add('bi', 'bi-x-circle-fill');
+        closeBtn.style.position = 'absolute';
+        closeBtn.style.top = '6px';
+        closeBtn.style.right = '8px';
+        closeBtn.style.fontSize = '20px';
+        closeBtn.style.color = 'white';
+        closeBtn.style.cursor = 'pointer';
+        closeBtn.title = 'Close Stream';
+
+        closeBtn.addEventListener('click', () => {
+            streamContainer.remove();
+            droneVideoFeedContainer.remove();
+            console.log("Stream frame removed!")
+        });
+
+        // Combine and append
+        streamContainer.appendChild(mjpegImg);
+        streamContainer.appendChild(overlayText);
+        streamContainer.appendChild(closeBtn);
+        droneVideoFeedContainer.appendChild(streamContainer);
     }
 
     // Detect when user starts manually zooming
@@ -706,6 +886,20 @@ document.addEventListener("DOMContentLoaded", function () {
         return calculateComponent(angle, range, quadrant);
     }
 
+    function convertToReadableTimestamp(timestamp) {
+        const date = new Date(timestamp);
+
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // Month is 0-indexed
+        const day = String(date.getDate()).padStart(2, '0');
+
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
     // Search functionality
     const searchQueryInput = document.getElementById("searchQueryInput");
     const searchQuerySubmit = document.getElementById("searchQuerySubmit");
@@ -753,8 +947,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         </button>
                     </h6>
                     <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
-                        <div class="accordion-body" id="drone-details-${drone.id}">
-                        </div>
+                        <div class="accordion-body" id="drone-details-${drone.id}"></div>
+                        <div id="rtl-button-${drone.id}" class="rtl-button"></div>
                     </div>
                 </div>`;
             droneDataContainer.innerHTML += droneHTML;
@@ -765,14 +959,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 droneDetailsElement.innerHTML = `
                     <hr class="horizontal dark my-1">
                     <span><strong>Connection Status:</strong></span><span class="${drone.feedback.connectionStatus == "Connected" ? "connected" : "disconnected"}"> ${drone.feedback.connectionStatus}</span>
-                    <p><strong>Drone Timestamp:</strong> ${drone.feedback.droneTimestamp}</p>
+                    <p><strong>Drone Timestamp:</strong> ${convertToReadableTimestamp(drone.feedback.droneTimestamp)}</p>
                     <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
                     <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
                     <p><strong>Current Position:</strong> [${drone.feedback.currentPosition.join(", ")}]</p>
                     <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed.toFixed(2)} m/s</p>
                     <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
-                    <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget} m</p>
-                    <p><strong>Battery Voltage:</strong> ${drone.feedback.batteryVoltage.toFixed(2)} V</p>
+                    <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget.toFixed(1)} m</p>
+                    <p><strong>Battery Level:</strong> ${drone.feedback.batteryLevel.toFixed(2)} %</p>
                     <p><strong>Weather State:</strong> ${drone.feedback.weatherState}</p>
                     <p><strong>Manned Flight State:</strong> ${drone.feedback.mannedFlightState}</p>
                 `;

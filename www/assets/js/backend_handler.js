@@ -23,6 +23,7 @@ const locationLegend = L.control({ position: 'bottomright' });
 const handledFatalStates = new Set();
 const fatalCoordinates = {};
 const renderedDrones = new Set();
+const conflictedDrones = new Set();
 
 document.addEventListener("DOMContentLoaded", function () {
     // Map setup
@@ -314,44 +315,63 @@ document.addEventListener("DOMContentLoaded", function () {
                 const droneVideoFeedContainer = document.getElementById("drone-video-feed");
 
                 // Handle Forward DAA conflicted state
-                if (drone.feedback.fsmState === 'Forward DAA conflict' && !renderedDrones.has(drone.id)) {
-                    console.log(`FSM State is Forward DAA conflicted for Drone ${drone.id}, rendering RTL & Proceed buttons.`);
-                    showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
+                if (drone.feedback.fsmState === 'Forward DAA conflict') {
+                    if (!renderedDrones.has(drone.id)) {
+                        console.log(`FSM State is Forward DAA conflicted for Drone ${drone.id}, rendering RTL & Proceed buttons.`);
+                        showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
 
-                    if (rtlButtonContainer && rtlButtonContainer.children.length === 0) {
-                        // RTL Button
-                        const rtlBtn = document.createElement('button');
-                        rtlBtn.textContent = 'RTL';
-                        rtlBtn.classList.add('btn', 'btn-warning', 'w-100', 'justify-content-center');
-                        rtlBtn.addEventListener('click', () => {
-                            console.log(`RTL requested for Drone ${drone.id}`);
-                            // Trigger RTL logic
-                            sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
-                        });
+                        if (rtlButtonContainer && rtlButtonContainer.children.length === 0) {
+                            // RTL Button
+                            const rtlBtn = document.createElement('button');
+                            rtlBtn.textContent = 'RTL';
+                            rtlBtn.classList.add('btn', 'btn-warning', 'w-100', 'justify-content-center');
+                            rtlBtn.addEventListener('click', () => {
+                                console.log(`RTL requested for Drone ${drone.id}`);
+                                sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
+                            });
 
-                        // Proceed Button
-                        const proceedBtn = document.createElement('button');
-                        proceedBtn.textContent = 'Proceed';
-                        proceedBtn.classList.add('btn', 'btn-info', 'w-100', 'justify-content-center');
-                        proceedBtn.addEventListener('click', () => {
-                            console.log(`Proceed selected for Drone ${drone.id}`);
-                            // Trigger Proceed logic
-                            proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
-                        });
+                            // Proceed Button
+                            const proceedBtn = document.createElement('button');
+                            proceedBtn.textContent = 'Proceed';
+                            proceedBtn.classList.add('btn', 'btn-info', 'w-100', 'justify-content-center');
+                            proceedBtn.addEventListener('click', () => {
+                                console.log(`Proceed selected for Drone ${drone.id}`);
+                                proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
+                            });
 
-                        rtlButtonContainer.appendChild(rtlBtn);
-                        rtlButtonContainer.appendChild(proceedBtn);
+                            rtlButtonContainer.appendChild(rtlBtn);
+                            rtlButtonContainer.appendChild(proceedBtn);
+                        }
 
+                        if (errorStateContainer && errorStateContainer.children.length === 0) {
+                            const icon = document.createElement('i');
+                            icon.classList.add('bi', 'bi-exclamation-triangle-fill', 'text-warning', 'me-1', 'blinking-icon');
+                            icon.setAttribute('title', 'Forward DAA Conflicted');
+                            errorStateContainer.appendChild(icon);
+                        }
+
+                        requestDroneVideoStream(drone.id, droneVideoFeedContainer);
+                        renderedDrones.add(drone.id);
+                        conflictedDrones.add(drone.id);
                     }
+                } else {
+                    // Clean up if previously in conflict
+                    if (conflictedDrones.has(drone.id)) {
+                        console.log(`FSM State cleared for Drone ${drone.id}, cleaning up conflict UI.`);
 
-                    if (errorStateContainer && errorStateContainer.children.length === 0) {
-                        const icon = document.createElement('i');
-                        icon.classList.add('bi', 'bi-exclamation-triangle-fill', 'text-warning', 'me-1', 'blinking-icon');
-                        icon.setAttribute('title', 'Forward DAA Conflicted');
-                        errorStateContainer.appendChild(icon);
+                        // Remove buttons
+                        if (rtlButtonContainer) rtlButtonContainer.innerHTML = '';
+
+                        // Remove icon
+                        if (errorStateContainer) errorStateContainer.innerHTML = '';
+
+                        // Remove video stream
+                        const streamContainer = document.getElementById(`drone-stream-container-${drone.id}`);
+                        if (streamContainer) streamContainer.remove();
+
+                        renderedDrones.delete(drone.id);
+                        conflictedDrones.delete(drone.id);
                     }
-
-                    renderedDrones.add(drone.id);
                 }
 
                 if (connectionStatusElement) {
@@ -598,7 +618,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(data => {
                 console.log(`RTL triggered for drone ${droneId}:`, data);
                 showModernToast('success', 'Success!', `Drone ${droneId} will Return To Launch.`);
-                requestDroneVideoStream(droneId, droneVideoFeedContainer)
+                // requestDroneVideoStream(droneId, droneVideoFeedContainer)
                 rtlButtonContainer.innerHTML = '';
                 errorStateContainer.innerHTML = '';
             })
@@ -663,13 +683,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function requestDroneVideoStream(droneId, droneVideoFeedContainer) {
+        // Check if the stream already exists
+        const existingStream = document.getElementById(`drone-stream-container-${droneId}`);
+        if (existingStream) return;
+
         // MJPEG Stream Container
         const streamContainer = document.createElement('div');
+        streamContainer.id = `drone-stream-container-${droneId}`;
         streamContainer.style.position = 'relative';
         streamContainer.style.display = 'inline-block';
         streamContainer.style.width = '420px';
         streamContainer.style.height = '236px';
         streamContainer.style.marginTop = '10px';
+        streamContainer.style.border = '2px solid #ccc';
+        streamContainer.style.borderRadius = '8px';
+        streamContainer.style.overflow = 'hidden';
 
         // MJPEG Image
         const mjpegImg = document.createElement('img');
@@ -679,7 +707,6 @@ document.addEventListener("DOMContentLoaded", function () {
         mjpegImg.height = 236;
         mjpegImg.alt = `Live stream from Drone ${droneId}`;
         mjpegImg.style.display = 'block';
-        mjpegImg.style.borderRadius = '6px';
 
         // Overlay Text
         const overlayText = document.createElement('div');
@@ -694,7 +721,7 @@ document.addEventListener("DOMContentLoaded", function () {
         overlayText.style.fontSize = '14px';
         overlayText.style.fontWeight = 'bold';
 
-        // Close Button (Bootstrap Icon)
+        // Close Button
         const closeBtn = document.createElement('i');
         closeBtn.classList.add('bi', 'bi-x-circle-fill');
         closeBtn.style.position = 'absolute';
@@ -707,16 +734,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
         closeBtn.addEventListener('click', () => {
             streamContainer.remove();
-            droneVideoFeedContainer.remove();
-            console.log("Stream frame removed!")
+            console.log(`Stream for Drone ${droneId} removed!`);
         });
 
-        // Combine and append
+        // Assemble and append
         streamContainer.appendChild(mjpegImg);
         streamContainer.appendChild(overlayText);
         streamContainer.appendChild(closeBtn);
         droneVideoFeedContainer.appendChild(streamContainer);
     }
+
 
     // Detect when user starts manually zooming
     map.on('zoomstart', () => {

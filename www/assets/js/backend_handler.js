@@ -178,10 +178,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateDroneDetails(droneData, hmbData) {
         const liveDroneIds = new Set(Object.values(droneData).map(d => d.id));
-        // Define states that indicate a drone is NOT on an active mission
         const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
     
-        // Update the master simulatedDroneArr with fresh data from the API
         Object.values(droneData).forEach(liveDrone => {
             const droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
             if (droneToUpdate) {
@@ -190,31 +188,24 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     
-        // Re-render the drone list UI with the updated data
         const currentQuery = document.getElementById("searchQueryInput").value.trim();
         updateDroneListBySearch(currentQuery);
     
-        // --- Handle MAP updates for ALL drones received from the API ---
         Object.values(droneData).forEach(drone => {
-            // Check if the drone has an active mission based on its FSM state
             const hasActiveMission = !nonMissionStates.has(drone.feedback.fsmState);
     
-            // Update historical path based on mission status
             if (hasActiveMission) {
-                // If it has an active mission, update its path
                 if (droneMarkers[drone.id]) {
                     const newLatLng = L.latLng(drone.feedback.currentPosition[0], drone.feedback.currentPosition[1]);
                     droneMarkers[drone.id].setLatLng(newLatLng);
                     updateDroneHistoricalPath(drone);
                 }
             } else {
-                // If no active mission, ensure any existing path is cleared
                 clearDroneHistoricalPath(drone.id);
             }
             
             updateDronePosition(drone);
     
-            // Handle Fatal error state on the MAP
             if (drone.feedback.fsmState === 'Fatal error' && !handledFatalStates.has(drone.id)) {
                 console.log(`FSM State is Fatal for Drone ${drone.id}, rendering prediction on map.`);
                 const fatalState = {
@@ -233,7 +224,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 handledFatalStates.add(drone.id);
             }
     
-            // Handle target position markers on the MAP
             const targetPosition = drone.feedback.targetPosition;
             if (targetPosition && targetPosition[0] !== 0 && targetPosition[1] !== 0) {
                 if (!droneTargetStates[drone.id]) {
@@ -265,7 +255,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
     
-        // Clear historical paths for drones that have gone offline
         for (let i = 0; i < max_drones; i++) {
             if (!liveDroneIds.has(i) && droneMarkers[i] && droneMarkers[i].historicalPath) {
                 clearDroneHistoricalPath(i);
@@ -295,6 +284,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (elToRemove) elToRemove.remove();
             }
         });
+        
+        // Define states that indicate a drone is NOT on an active mission
+        const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
 
         filteredDroneArr.forEach(drone => {
             const existingElement = document.getElementById(`accordion-item-${drone.id}`);
@@ -349,25 +341,42 @@ document.addEventListener("DOMContentLoaded", function () {
                 droneDataContainer.appendChild(newDroneElement);
             }
 
+            // --- MODIFIED: Handle dynamic UI elements like RTL buttons and error icons ---
             const rtlButtonContainer = document.getElementById(`rtl-button-${drone.id}`);
             const errorStateContainer = document.querySelector(`.error-state-drone-${drone.id}`);
             const droneVideoFeedContainer = document.getElementById("drone-video-feed");
 
-            if (drone.feedback.fsmState === 'Forward DAA conflict') {
+            const hasActiveMission = !nonMissionStates.has(drone.feedback.fsmState);
+            const isDaaConflict = drone.feedback.fsmState === 'Forward DAA conflict';
+
+            // Clear the container to rebuild it based on the current state
+            if (rtlButtonContainer) {
+                rtlButtonContainer.innerHTML = '';
+            }
+        
+            // Add RTL button if there's any active mission
+            if (hasActiveMission && rtlButtonContainer) {
+                const rtlBtn = document.createElement('button');
+                rtlBtn.textContent = 'RTL';
+                rtlBtn.className = 'btn btn-warning w-100 justify-content-center';
+                rtlBtn.onclick = () => sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
+                rtlButtonContainer.appendChild(rtlBtn);
+            }
+        
+            // Handle the specific DAA conflict state
+            if (isDaaConflict) {
+                // Add the Proceed button ONLY in this state
+                if (rtlButtonContainer) {
+                    const proceedBtn = document.createElement('button');
+                    proceedBtn.textContent = 'Proceed';
+                    proceedBtn.className = 'btn btn-info w-100 justify-content-center';
+                    proceedBtn.onclick = () => proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
+                    rtlButtonContainer.appendChild(proceedBtn); // Append, don't replace
+                }
+        
+                // Handle other UI elements for DAA
                 if (!conflictedDrones.has(drone.id)) {
                     showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
-                    if (rtlButtonContainer) {
-                        rtlButtonContainer.innerHTML = '';
-                        const rtlBtn = document.createElement('button');
-                        rtlBtn.textContent = 'RTL';
-                        rtlBtn.className = 'btn btn-warning w-100 justify-content-center';
-                        rtlBtn.onclick = () => sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
-                        const proceedBtn = document.createElement('button');
-                        proceedBtn.textContent = 'Proceed';
-                        proceedBtn.className = 'btn btn-info w-100 justify-content-center';
-                        proceedBtn.onclick = () => proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
-                        rtlButtonContainer.append(rtlBtn, proceedBtn);
-                    }
                     if (errorStateContainer) {
                         errorStateContainer.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-1 blinking-icon" title="Forward DAA Conflicted"></i>`;
                     }
@@ -375,8 +384,8 @@ document.addEventListener("DOMContentLoaded", function () {
                     conflictedDrones.add(drone.id);
                 }
             } else {
+                // Clean up DAA-specific UI if the state is no longer DAA conflict
                 if (conflictedDrones.has(drone.id)) {
-                    if (rtlButtonContainer) rtlButtonContainer.innerHTML = '';
                     if (errorStateContainer) errorStateContainer.innerHTML = '';
                     const streamContainer = document.getElementById(`drone-stream-container-${drone.id}`);
                     if (streamContainer) streamContainer.remove();

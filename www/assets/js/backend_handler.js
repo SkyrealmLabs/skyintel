@@ -67,17 +67,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var greenDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-green.png' });
 
     const max_drones = 100;
-    // let droneMarkers = []; // Already declared globally
-    // let multi_drone_indicator = []; // Already declared globally
-
-    // Define marker icons with different colors for each target type
+    
     const targetIcons = {
         pickup: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
         dropoff: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-blue.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
         home: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-green.png', iconSize: [25, 41], iconAnchor: [12, 41] })
     };
 
-    // Initialize droneMarkers and multi_drone_indicator for the map
     for (let a = 0; a < max_drones; a++) {
         multi_drone_indicator[a] = L.marker([2.9100729431148187, 101.65520813904638], { icon: greenDroneIcon });
         const htmlData = `<div class="u-container-layout u-container-layout-5 droneInfo">
@@ -87,12 +83,7 @@ document.addEventListener("DOMContentLoaded", function () {
         droneMarkers[a] = multi_drone_indicator[a];
     }
 
-    /**
-     * Initializes the master drone data array and sets up event listeners.
-     * Calls the main renderer to display the initial empty list.
-     */
     function updateDroneStatus() {
-        // Initialize simulatedDroneArr with default data if it's empty
         if (!simulatedDroneArr || simulatedDroneArr.length === 0) {
             simulatedDroneArr = new Array(max_drones).fill(null).map((_, i) => ({
                 id: i,
@@ -120,15 +111,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }));
         }
 
-        // Call the rendering function to show the initial state (which will be empty)
         updateDroneListBySearch("");
 
-        // Prevent accordion toggle when clicking on the recenter icon or switch
         $(document).on("click", ".recenter, .btn-color-mode-switch input", function (event) {
             event.stopPropagation();
         });
 
-        // Attach delegated event listener for dynamically created toggle switches
         $(document).on("change", "input[name='data_mode']", function () {
             dataModePreview(this);
         });
@@ -138,7 +126,6 @@ document.addEventListener("DOMContentLoaded", function () {
             isHMBData = !$(mode).prop("checked");
         }
 
-        // Attach a single delegated event listener for all recenter icons
         $(document).on('click', '.recenter', function (event) {
             event.stopPropagation();
             const icon = this;
@@ -151,26 +138,19 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 selectedDrone = droneId;
                 console.log("Selected Drone:", selectedDrone);
-
-                // Reset all icons to inactive before activating the clicked one
                 $('.recenter').removeClass('active').addClass('inactive');
                 $(icon).addClass('active').removeClass('inactive');
             }
         });
     }
 
-    // Initial setup call
     updateDroneStatus();
 
-    /**
-     * Fetches drone, mission, and HMB data from APIs concurrently.
-     */
     function fetchDroneData() {
         try {
             const droneApiURL = 'https://gcs.zulsyah.com/rpi_drone_feedback';
             const missionApiURL = 'https://gcs.zulsyah.com/active_mission_list';
             const hmbApiURL = 'https://gcs.zulsyah.com/hmb_drone_feedback';
-
             const options = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' }
@@ -194,14 +174,13 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     }
 
-    // Set interval to fetch data periodically
     setInterval(fetchDroneData, 500);
 
-    /**
-     * Updates the master data array and then handles all map-related updates.
-     * Calls the UI renderer function to refresh the drone list.
-     */
     function updateDroneDetails(droneData, hmbData) {
+        const liveDroneIds = new Set(Object.values(droneData).map(d => d.id));
+        // Define states that indicate a drone is NOT on an active mission
+        const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
+    
         // Update the master simulatedDroneArr with fresh data from the API
         Object.values(droneData).forEach(liveDrone => {
             const droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
@@ -210,25 +189,31 @@ document.addEventListener("DOMContentLoaded", function () {
                 droneToUpdate.eta = liveDrone.eta;
             }
         });
-
-        // Re-render the drone list UI with the updated data, preserving any search query
+    
+        // Re-render the drone list UI with the updated data
         const currentQuery = document.getElementById("searchQueryInput").value.trim();
         updateDroneListBySearch(currentQuery);
-
+    
         // --- Handle MAP updates for ALL drones received from the API ---
         Object.values(droneData).forEach(drone => {
-            // Update map markers, paths, and icons
-            if (drone.feedback.fsmState === "Mission finished") {
-                clearDroneHistoricalPath(drone.id);
-            } else {
+            // Check if the drone has an active mission based on its FSM state
+            const hasActiveMission = !nonMissionStates.has(drone.feedback.fsmState);
+    
+            // Update historical path based on mission status
+            if (hasActiveMission) {
+                // If it has an active mission, update its path
                 if (droneMarkers[drone.id]) {
                     const newLatLng = L.latLng(drone.feedback.currentPosition[0], drone.feedback.currentPosition[1]);
                     droneMarkers[drone.id].setLatLng(newLatLng);
                     updateDroneHistoricalPath(drone);
                 }
+            } else {
+                // If no active mission, ensure any existing path is cleared
+                clearDroneHistoricalPath(drone.id);
             }
+            
             updateDronePosition(drone);
-
+    
             // Handle Fatal error state on the MAP
             if (drone.feedback.fsmState === 'Fatal error' && !handledFatalStates.has(drone.id)) {
                 console.log(`FSM State is Fatal for Drone ${drone.id}, rendering prediction on map.`);
@@ -247,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 L.polyline([fatalState.position, predictedCoordinate], { color: 'red', weight: 3, opacity: 0.8 }).addTo(map);
                 handledFatalStates.add(drone.id);
             }
-
+    
             // Handle target position markers on the MAP
             const targetPosition = drone.feedback.targetPosition;
             if (targetPosition && targetPosition[0] !== 0 && targetPosition[1] !== 0) {
@@ -279,14 +264,16 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
+    
+        // Clear historical paths for drones that have gone offline
+        for (let i = 0; i < max_drones; i++) {
+            if (!liveDroneIds.has(i) && droneMarkers[i] && droneMarkers[i].historicalPath) {
+                clearDroneHistoricalPath(i);
+            }
+        }
     }
 
-    /**
- * Main UI rendering function. Intelligently updates the drone list in-place
- * to preserve accordion state and improve performance.
- */
     function updateDroneListBySearch(query) {
-        // 1. Get the latest list of drones that should be visible
         const filteredDroneArr = simulatedDroneArr.filter(drone => {
             if (drone.feedback.connectionStatus !== 'Connected') return false;
             const searchTerm = query.toLowerCase();
@@ -295,17 +282,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         const droneDataContainer = document.getElementById("droneDataContainer");
-
-        // 2. Get a set of drone IDs currently displayed on the page
         const existingDroneIds = new Set();
         droneDataContainer.querySelectorAll('.accordion-item').forEach(el => {
             existingDroneIds.add(parseInt(el.dataset.droneId, 10));
         });
 
-        // 3. Get a set of drone IDs that SHOULD be on the page
         const newDroneIds = new Set(filteredDroneArr.map(d => d.id));
 
-        // 4. Remove drones that are no longer online or don't match the search
         existingDroneIds.forEach(id => {
             if (!newDroneIds.has(id)) {
                 const elToRemove = document.getElementById(`accordion-item-${id}`);
@@ -313,11 +296,8 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // 5. Update existing drones and add any new ones
         filteredDroneArr.forEach(drone => {
             const existingElement = document.getElementById(`accordion-item-${drone.id}`);
-
-            // Define the content for the details section to avoid repetition
             const pickupETA = timeFormat(drone.eta.pickup);
             const dropoffETA = timeFormat(drone.eta.dropoff);
             const homeETA = timeFormat(drone.eta.rtl);
@@ -337,18 +317,15 @@ document.addEventListener("DOMContentLoaded", function () {
             <p><strong>ETA to Home Point:</strong> ${homeETA}</p>`;
 
             if (existingElement) {
-                // If the drone is already in the list, just update its details.
-                // This does NOT destroy the accordion, preserving its open/closed state.
                 const droneDetailsElement = existingElement.querySelector(`#drone-details-${drone.id}`);
                 if (droneDetailsElement.innerHTML !== detailsHTML) {
                     droneDetailsElement.innerHTML = detailsHTML;
                 }
             } else {
-                // If the drone is new, create its full HTML and add it to the list.
                 const newDroneElement = document.createElement('div');
                 newDroneElement.className = 'accordion-item';
                 newDroneElement.id = `accordion-item-${drone.id}`;
-                newDroneElement.dataset.droneId = drone.id; // Add data-attribute for tracking
+                newDroneElement.dataset.droneId = drone.id;
 
                 newDroneElement.innerHTML = `
                 <h6 class="accordion-header" id="heading-${drone.id}">
@@ -368,13 +345,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
                     <div class="accordion-body" id="drone-details-${drone.id}">${detailsHTML}</div>
                     <div id="rtl-button-${drone.id}" class="rtl-button"></div>
-                </div>
-            `;
+                </div>`;
                 droneDataContainer.appendChild(newDroneElement);
             }
 
-            // --- Handle dynamic UI elements like RTL buttons and error icons ---
-            // This runs after the element is guaranteed to be in the DOM
             const rtlButtonContainer = document.getElementById(`rtl-button-${drone.id}`);
             const errorStateContainer = document.querySelector(`.error-state-drone-${drone.id}`);
             const droneVideoFeedContainer = document.getElementById("drone-video-feed");
@@ -411,7 +385,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        // 6. Finally, add or remove the "no drones" message
         const hasDrones = droneDataContainer.querySelector('.accordion-item');
         const noDronesMessage = droneDataContainer.querySelector('.no-drones-message');
 
@@ -422,8 +395,6 @@ document.addEventListener("DOMContentLoaded", function () {
             noDronesMessage.remove();
         }
     }
-
-    // --- All other helper functions remain below ---
 
     const completedMissions = new Set();
 
@@ -570,7 +541,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const droneMarker = multi_drone_indicator[drone.id];
         if (droneMarker) {
             droneMarker.setLatLng(drone.feedback.currentPosition);
-            // Assuming leaflet-rotatedmarker.js is included for this to work
             if (typeof droneMarker.setRotationAngle === 'function') {
                 droneMarker.setRotationAngle(drone.feedback.currentHeading);
             }
@@ -655,8 +625,8 @@ document.addEventListener("DOMContentLoaded", function () {
         let quadrant, angle;
         if (yaw >= 0 && yaw < 90) { quadrant = 1; angle = yaw; }
         else if (yaw >= 90 && yaw < 180) { quadrant = 2; angle = 180 - yaw; }
-        else if (yaw >= 180 && yaw < 270) { quadrant = 3; angle = yaw - 180; } // Corrected angle for Q3
-        else { quadrant = 4; angle = 360 - yaw; } // Corrected angle for Q4
+        else if (yaw >= 180 && yaw < 270) { quadrant = 3; angle = yaw - 180; }
+        else { quadrant = 4; angle = 360 - yaw; }
         return calculateComponent(angle, range, quadrant);
     }
 
@@ -666,7 +636,6 @@ document.addEventListener("DOMContentLoaded", function () {
         return date.toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' });
     }
 
-    // --- Search functionality ---
     const searchQueryInput = document.getElementById("searchQueryInput");
     const searchQuerySubmit = document.getElementById("searchQuerySubmit");
 

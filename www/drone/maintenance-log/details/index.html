@@ -78,7 +78,7 @@
     <main class="main-content position-relative justify-items-center max-height-vh-100 h-100 border-radius-lg">
         <!-- Main content goes here -->
         <div class="content-header">
-            <h2>Maintenance Log</h2>
+            <h2>DJI (SN-DJI-M3E-102947)</h2>
             <div class="mini-searchBar">
                 <input id="searchQueryInput" type="text" name="searchQueryInput" placeholder="Search" />
                 <button id="searchQuerySubmit" type="submit" name="searchQuerySubmit">
@@ -130,10 +130,10 @@
             </div>
             <div class="hidden opacity-50 fixed inset-0 z-40 bg-black" id="new-board-modal-backdrop"></div>
             <div class="modal fade" id="jkanban-info-modal" style="display: none" tabindex="-1" role="dialog">
-                <div class="modal-dialog">
+                <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="h5 modal-title">Task details</h5>
+                            <h5 class="h5 modal-title">Maintenance Details</h5>
                             <button type="button" class="btn-close text-dark" data-bs-dismiss="modal"
                                 aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
@@ -141,75 +141,105 @@
                         </div>
                         <div class="pt-4 modal-body">
                             <input id="jkanban-task-id" class="d-none" />
-                            <div class="input-group input-group-static mb-4">
-                                <label>Task Assignee</label>
-                                <input class="form-control" placeholder="Task Title" id="jkanban-task-title"
-                                    type="text">
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Date</label>
+                                        <input class="form-control datetimepicker" type="text" placeholder="yyyy-mm-dd"
+                                            data-input>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Flight Hours</label>
+                                        <input class="form-control" placeholder="Flight Hours" id="flight-hours"
+                                            type="text">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="input-group input-group-static mb-4">
-                                <label>Task Assignee</label>
-                                <input class="form-control" placeholder="User" id="jkanban-task-assignee" type="text">
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-12">
+                                    <div class="input-group input-group-static">
+                                        <label>Maintenance Task</label>
+                                        <input class="form-control" placeholder="Maintenance Task"
+                                            id="jkanban-task-title" type="text">
+                                    </div>
+                                </div>
                             </div>
-                            <div class="input-group input-group-static">
-                                <textarea class="form-control" placeholder="Task Description"
-                                    id="jkanban-task-description" rows="4"></textarea>
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-12">
+                                    <div class="input-group input-group-static">
+                                        <textarea class="form-control" placeholder="Description of work"
+                                            id="jkanban-task-description" rows="4"></textarea>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="alert alert-success d-none">Changes saved!</div>
-                            <div class="text-end">
-                                <button class="m-1 btn btn-primary" id="jkanban-update-task" data-toggle="modal"
-                                    data-target="#jkanban-info-modal">
-                                    Save changes
-                                </button>
-                                <button class="m-1 btn btn-secondary" data-dismiss="modal"
-                                    data-target="#jkanban-info-modal">
-                                    Close
-                                </button>
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Status</label>
+                                        <select class="form-control" name="choices-status" id="choices-status">
+                                            <option value="" disabled selected hidden>Select status</option>
+                                            <option value="Pending">Pending</option>
+                                            <option value="In Progress">In Progress</option>
+                                            <option value="Done">Done</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Performed by</label>
+                                        <select class="form-control" name="choices-status" id="jkanban-task-assignee">
+                                            <option value="" disabled selected hidden>Select task assignee</option>
+                                            <option value="Arman">Arman</option>
+                                            <option value="Desmond">Desmond</option>
+                                            <option value="Zulfhanizam">Zulfhanizam</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Reference/Procedure</label>
+                                        <input class="form-control" placeholder="Reference/Procedure"
+                                            id="maintenance-date" type="text">
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <label>Next Due Date</label>
+                                        <input class="form-control nextduedatepicker" type="text"
+                                            placeholder="yyyy-mm-dd" data-input>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mb-4">
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="input-group input-group-static">
+                                        <div class="input-group input-group-static">
+                                            <textarea class="form-control" placeholder="Description of work"
+                                                id="jkanban-task-description" rows="4"></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-12 col-md-6">
+                                    <div class="form-check d-flex p-0 gap-2">
+                                        <input class="form-check-input" type="checkbox" id="confirm-maintenance"
+                                            style="width:25px;">
+                                        <label id="signed-text" class="form-check-label" for="signed-text"></label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn bg-gradient-secondary"
+                                data-bs-dismiss="modal">Close</button>
+                            <button type="button" class="btn bg-gradient-primary">Save</button>
                         </div>
                     </div>
                 </div>
             </div>
-            <!-- <div class="hidden opacity-50 fixed inset-0 z-40 bg-black" id="jkanban-info-modal-backdrop"></div>
-                <footer class="footer py-4  ">
-                    <div class="container-fluid">
-                        <div class="row align-items-center justify-content-lg-between">
-                            <div class="col-lg-6 mb-lg-0 mb-4">
-                                <div class="copyright text-center text-sm text-muted text-lg-start">
-                                    ©
-                                    <script>
-                                        document.write(new Date().getFullYear())
-                                    </script>,
-                                    made with <i class="fa fa-heart"></i> by
-                                    <a href="https://www.creative-tim.com" class="font-weight-bold"
-                                        target="_blank">Creative Tim</a>
-                                    for a better web.
-                                </div>
-                            </div>
-                            <div class="col-lg-6">
-                                <ul class="nav nav-footer justify-content-center justify-content-lg-end">
-                                    <li class="nav-item">
-                                        <a href="https://www.creative-tim.com" class="nav-link text-muted"
-                                            target="_blank">Creative Tim</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="https://www.creative-tim.com/presentation" class="nav-link text-muted"
-                                            target="_blank">About
-                                            Us</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="https://www.creative-tim.com/blog" class="nav-link text-muted"
-                                            target="_blank">Blog</a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a href="https://www.creative-tim.com/license" class="nav-link pe-0 text-muted"
-                                            target="_blank">License</a>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </footer> -->
-            <!-- </div> -->
         </div>
     </main>
 
@@ -358,6 +388,32 @@
     <script src="../../../assets/js/leaflet.rotatedMarker.js"></script>
     <script src="../../../assets/js/backend_handler.js"></script>
     <script src="../../../assets/js/index.js"></script>
+    <script src="../../../assets/js/plugins/choices.min.js"></script>
+    <script src="../../../assets/js/plugins/flatpickr.min.js"></script>
+
+    <script>
+        if (document.querySelector('.datetimepicker')) {
+            flatpickr('.datetimepicker', {
+                allowInput: true
+            }); // flatpickr
+        }
+
+        if (document.querySelector('.nextduedatepicker')) {
+            flatpickr('.nextduedatepicker', {
+                allowInput: true
+            }); // flatpickr
+        }
+
+        if (document.getElementById('choices-status')) {
+            var genders = document.getElementById('choices-status');
+            const example = new Choices(genders);
+        }
+
+        if (document.getElementById('jkanban-task-assignee')) {
+            var genders = document.getElementById('jkanban-task-assignee');
+            const example = new Choices(genders);
+        }
+    </script>
 
     <script>
         // jkanban init
@@ -384,14 +440,24 @@
                             "#jkanban-info-modal #jkanban-task-description"
                         );
                         let taskId = el.getAttribute("data-eid");
+                        let taskSignedText = document.getElementById("signed-text");
 
                         let taskTitle = el.querySelector('p.text').innerHTML;
                         let taskAssignee = el.getAttribute("data-assignee");
                         let taskDescription = el.getAttribute("data-description");
+                        let taskSigned = el.querySelector(".signed-badge").classList.contains("hidden");
+                        let taskSignedChecked = document.getElementById("confirm-maintenance");
                         jkanbanInfoModalTaskId.value = taskId;
                         jkanbanInfoModalTaskTitle.value = taskTitle;
                         jkanbanInfoModalTaskAssignee.value = taskAssignee;
                         jkanbanInfoModalTaskDescription.value = taskDescription;
+                        if (taskSigned) {
+                            taskSignedChecked.checked = false;
+                            taskSignedText.innerHTML = "I confirm the above maintenance task was performed as stated"
+                        } else {
+                            taskSignedChecked.checked = true;
+                            taskSignedText.innerHTML = "This task have been signed by <b>Zulfhanizam<b>"
+                        }
                         var myModal = new bootstrap.Modal(jkanbanInfoModal, {
                             show: true
                         });
@@ -432,70 +498,45 @@
                         }
                     },
                     addItemButton: true,
-                    boards: [{
-                        id: "_backlog",
-                        title: "Backlog",
-                        item: [{
-                            id: "_task_1_title_id",
-                            title: '<p class="text mb-0">Click me to change title</p>',
-                            class: ["border-radius-md"]
+                    boards: [
+                        {
+                            id: "_pending",
+                            title: "Pending",
+                            item: [
+                                {
+                                    id: "1",
+                                    title: '<p class="text m-0 fw-bold">Battery Health Check</p><p class="text-sm"></p><div class="d-flex mt-4"><div class="d-flex align-items-center"><span class="badge badge-sm bg-gradient-warning">DJI-3</span><span class="badge badge-sm bg-gradient-success ms-1 signed-badge hidden">Signed</span></div><span class="ms-auto text-sm">Zulfhanizam</span></div>',
+                                    class: ["border-radius-xl"]
+                                }
+                            ]
                         },
                         {
-                            id: "_task_2_title_id",
-                            title: '<p class="text mb-0">Drag me to "In progress" section</p>',
-                            class: ["border-radius-md"]
+                            id: "_progress",
+                            title: "In Progress",
+                            item: [
+                                {
+                                    id: "5",
+                                    title: '<p class="text m-0 fw-bold">Propeller Inspection & Replacement</p><p class="text-sm"></p><div class="d-flex mt-4"><div class="d-flex align-items-center"><span class="badge badge-sm bg-gradient-warning">DJI-3</span><span class="badge badge-sm bg-gradient-success ms-1 signed-badge hidden">Signed</span></div><span class="ms-auto text-sm">Zulfhanizam</span></div>',
+                                    class: ["border-radius-xl"]
+                                }
+                            ]
                         },
                         {
-                            id: "_task_do_something_id",
-                            title: '<img src="../../../assets/img/office-dark.jpg" class="w-100"><span class="mt-3 badge badge-sm bg-gradient-primary">Pending</span><p class="text mt-2">Website Design: New cards for blog section and profile details</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">3</span></div><div class="avatar-group ms-auto"><a href="javascript:;" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jessica Rowland"><img alt="Image placeholder" src="../../../assets/img/team-1.jpg" class=""></a><a href="javascript:;" class="avatar avatar-xs rounded-circle me-2" data-toggle="tooltip" data-original-title="Audrey Love"><img alt="Image placeholder" src="../../../assets/img/team-2.jpg" class="rounded-circle"></a><a href="javascript:;" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Michael Lewis"><img alt="Image placeholder" src="../../../assets/img/team-3.jpg" class="rounded-circle"></a></div></div>',
-                            assignee: "Done Joe",
-                            description: "This task's description is for something, but not for anything",
-                            class: ["border-radius-xl"]
-                        },
-                        ]
-                    },
-                    {
-                        id: "_progress",
-                        title: "In progress",
-                        item: [{
-                            id: "_task_3_title_id",
-                            title: '<span class="mt-2 badge badge-sm bg-gradient-warning">Errors</span><p class="text mt-2">Fix Firefox errors</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">11</span></div><div class="avatar-group ms-auto"><a href="javascript:;" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jana Lucie"><img alt="Image placeholder" src="../../../assets/img/team-3.jpg" class=""></a><a href="javascript:;" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jessica Rowland"><img alt="Image placeholder" src="../../../assets/img/team-2.jpg" class=""></a></div></div>',
-                            class: ["border-radius-md"]
-                        },
-                        {
-                            id: "_task_4_title_id",
-                            title: '<span class="badge badge-sm bg-gradient-info">Updates</span><p class="text mt-2">Argon Dashboard PRO - Angular 11</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">3</span></div><div class="avatar-group ms-auto"><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jana Lucie"><img alt="Image placeholder" src="../../../assets/img/team-5.jpg" class=""></a><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jessica Rowland"><img alt="Image placeholder" src="../../../assets/img/team-4.jpg" class=""></a></div></div>',
-                            class: ["border-radius-xl"]
-                        },
-                        {
-                            id: "_task_do_something_4_id",
-                            title: '<img src="../../../assets/img/meeting.jpg" class="w-100"><span class="mt-3 badge badge-sm bg-gradient-info">Updates</span><p class="text mt-2">Vue 3 Updates</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">9</span></div><div class="avatar-group ms-auto"><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jessica Rowland"><img alt="Image placeholder" src="../../../assets/img/team-1.jpg" class=""></a><a href="javascript" class="avatar avatar-xs rounded-circle me-2" data-toggle="tooltip" data-original-title="Audrey Love"><img alt="Image placeholder" src="../../../assets/img/team-2.jpg" class="rounded-circle"></a><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Michael Lewis"><img alt="Image placeholder" src="../../../assets/img/team-4.jpg" class="rounded-circle"></a></div></div>',
-                            assignee: "Done Joe",
-                            description: "This task's description is for something, but not for anything",
-                            class: ["border-radius-xl"]
+                            id: "_done",
+                            title: "Done",
+                            item: [
+                                {
+                                    id: "5",
+                                    title: '<p class="text m-0 fw-bold">Motor Cleaning and Lubrication</p><p class="text-sm"></p><div class="d-flex mt-4"><div class="d-flex align-items-center"><span class="badge badge-sm bg-gradient-warning">DJI-3</span><span class="badge badge-sm bg-gradient-success ms-1 signed-badge hidden">Signed</span></div><span class="ms-auto text-sm">Zulfhanizam</span></div>',
+                                    class: ["border-radius-xl"]
+                                },
+                                {
+                                    id: "5",
+                                    title: '<p class="text m-0 fw-bold">Firmware Updates</p><p class="text-sm">Signed by Maxting</p><div class="d-flex mt-4"><div class="d-flex align-items-center"><span class="badge badge-sm bg-gradient-warning">DJI-3</span><span class="badge badge-sm bg-gradient-success ms-1 signed-badge">Signed</span></div><span class="ms-auto text-sm">Zulfhanizam</span></div>',
+                                    class: ["border-radius-xl"]
+                                }
+                            ]
                         }
-                        ]
-
-                    },
-                    {
-                        id: "_done",
-                        title: "Done",
-                        item: [{
-                            id: "_task_all_right_id",
-                            title: '<img src="../../../assets/img/home-decor-1.jpg" class="w-100"><span class="mt-3 badge badge-sm bg-gradient-success">Done</span><p class="text mt-2">Redesign for the home page</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">8</span></div><div class="avatar-group ms-auto"><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Jessica Rowland"><img alt="Image placeholder" src="../../../assets/img/team-5.jpg" class=""></a><a href="javascript" class="avatar avatar-xs rounded-circle me-2" data-toggle="tooltip" data-original-title="Audrey Love"><img alt="Image placeholder" src="../../../assets/img/team-1.jpg" class="rounded-circle"></a><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Michael Lewis"><img alt="Image placeholder" src="../../../assets/img/team-4.jpg" class="rounded-circle"></a></div></div>',
-                            assignee: "Done Joe",
-                            description: "This task's description is for something, but not for anything",
-                            class: ["border-radius-xl"]
-                        },
-                        {
-                            id: "_task_ok_id",
-                            title: '<span class="badge badge-sm bg-gradient-success">Done</span><p class="text mt-2">Schedule winter campaign</p><div class="d-flex"><div> <i class="fa fa-paperclip me-1 text-sm"></i><span class="text-sm">2</span></div><div class="avatar-group ms-auto"><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Michael Laurence"><img alt="Image placeholder" src="../../../assets/img/team-1.jpg" class=""></a><a href="javascript" class="avatar avatar-xs me-2 rounded-circle" data-toggle="tooltip" data-original-title="Michael Lewis"><img alt="Image placeholder" src="../../../assets/img/team-4.jpg" class="rounded-circle"></a></div></div>',
-                            assignee: "Done Joe",
-                            description: "This task's description is for something, but not for anything",
-                            class: ["border-radius-xl"]
-                        }
-                        ]
-                    }
                     ]
                 });
 

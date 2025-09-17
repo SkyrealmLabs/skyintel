@@ -3,6 +3,8 @@ const path = require('path');
 const app = express();
 const http = require('http').createServer(app);
 const mysql = require('mysql2');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 const host = "127.0.0.1";
 const port = 8080;
@@ -111,6 +113,60 @@ app.delete('/api/drone/:id/path', (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(200).json({ message: 'Path cleared.' });
     });
+});
+
+// API: Login
+app.post('/api/login', async (req, res) => {
+  const { email, password } = req.body; // Include role in the request
+
+  // Input validation
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    // Find the user in the database
+    const user = await new Promise((resolve, reject) => {
+      db.query('SELECT * FROM user WHERE email = ?', [email], (err, result) => {
+        if (err) return reject(err);
+        resolve(result.length > 0 ? result[0] : null);
+      });
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Compare the password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Check if the user's role matches the role they are trying to log in as
+    // if (role === 'client' && user.user_role_id !== 3) {
+    //   return res.status(403).json({ message: "Unauthorized: User access required" });
+    // }
+
+    // Generate a JWT token
+    const token = jwt.sign({ id: user.id, role: user.user_role_id }, JWT_SECRET, { expiresIn: '1h' });
+
+    // Send the response with user data, message, and token
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name, // Include other fields as necessary
+        email: user.email,
+        phoneno: user.phoneno,
+        role: user.user_role_id // Include the role for the response
+      }
+    });
+  } catch (error) {
+    console.error(error); // Log the error for debugging
+    res.status(500).json({ message: "Error logging in" });
+  }
 });
 
 // Start Server

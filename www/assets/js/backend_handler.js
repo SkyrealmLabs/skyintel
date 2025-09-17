@@ -67,7 +67,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var greenDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-green.png' });
 
     const max_drones = 100;
-    
+
     const targetIcons = {
         pickup: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
         dropoff: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-blue.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
@@ -107,6 +107,14 @@ document.addEventListener("DOMContentLoaded", function () {
                     pickup: "N/A",
                     dropoff: "N/A",
                     rtl: "N/A"
+                },
+                connectivity: {
+                    networkType: "N/A",
+                    lteCellID: "N/A",
+                    lteNetworkBand: "N/A",
+                    lteRSSI: -999,
+                    lteRSRP: -999,
+                    lteSNR: -999
                 }
             }));
         }
@@ -179,21 +187,22 @@ document.addEventListener("DOMContentLoaded", function () {
     function updateDroneDetails(droneData, hmbData) {
         const liveDroneIds = new Set(Object.values(droneData).map(d => d.id));
         const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
-    
+
         Object.values(droneData).forEach(liveDrone => {
             const droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
             if (droneToUpdate) {
                 Object.assign(droneToUpdate.feedback, liveDrone.feedback);
                 droneToUpdate.eta = liveDrone.eta;
+                droneToUpdate.connectivity = liveDrone.connectivity;
             }
         });
-    
+
         const currentQuery = document.getElementById("searchQueryInput").value.trim();
         updateDroneListBySearch(currentQuery);
-    
+
         Object.values(droneData).forEach(drone => {
             const hasActiveMission = !nonMissionStates.has(drone.feedback.fsmState);
-    
+
             if (hasActiveMission) {
                 if (droneMarkers[drone.id]) {
                     const newLatLng = L.latLng(drone.feedback.currentPosition[0], drone.feedback.currentPosition[1]);
@@ -203,9 +212,9 @@ document.addEventListener("DOMContentLoaded", function () {
             } else {
                 clearDroneHistoricalPath(drone.id);
             }
-            
+
             updateDronePosition(drone);
-    
+
             if (drone.feedback.fsmState === 'Fatal error' && !handledFatalStates.has(drone.id)) {
                 console.log(`FSM State is Fatal for Drone ${drone.id}, rendering prediction on map.`);
                 const fatalState = {
@@ -223,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 L.polyline([fatalState.position, predictedCoordinate], { color: 'red', weight: 3, opacity: 0.8 }).addTo(map);
                 handledFatalStates.add(drone.id);
             }
-    
+
             const targetPosition = drone.feedback.targetPosition;
             if (targetPosition && targetPosition[0] !== 0 && targetPosition[1] !== 0) {
                 if (!droneTargetStates[drone.id]) {
@@ -254,7 +263,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
             }
         });
-    
+
         for (let i = 0; i < max_drones; i++) {
             if (!liveDroneIds.has(i) && droneMarkers[i] && droneMarkers[i].historicalPath) {
                 clearDroneHistoricalPath(i);
@@ -284,7 +293,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 if (elToRemove) elToRemove.remove();
             }
         });
-        
+
         // Define states that indicate a drone is NOT on an active mission
         const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
 
@@ -293,20 +302,28 @@ document.addEventListener("DOMContentLoaded", function () {
             const pickupETA = timeFormat(drone.eta.pickup);
             const dropoffETA = timeFormat(drone.eta.dropoff);
             const homeETA = timeFormat(drone.eta.rtl);
+            const rsrpQuality = getRSRPQuality(drone.connectivity?.lteRSRP);
             const detailsHTML = `
-            <hr class="horizontal dark my-1">
-            <span><strong>Connection Status:</strong></span><span class="connected"> ${drone.feedback.connectionStatus}</span>
-            <p><strong>Drone Timestamp:</strong> ${convertToReadableTimestamp(drone.feedback.droneTimestamp)}</p>
-            <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
-            <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
-            <p><strong>Current Position:</strong> [${drone.feedback.currentPosition.join(", ")}]</p>
-            <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed.toFixed(2)} m/s</p>
-            <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
-            <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget.toFixed(1)} m</p>
-            <p><strong>Battery Level:</strong> ${drone.feedback.batteryLevel.toFixed(2)} %</p>
-            <p><strong>ETA to Pickup Point:</strong> ${pickupETA}</p>
-            <p><strong>ETA to Dropoff Point:</strong> ${dropoffETA}</p>
-            <p><strong>ETA to Home Point:</strong> ${homeETA}</p>`;
+                <hr class="horizontal dark my-1">
+                <span><strong>Connection Status:</strong></span><span class="connected"> ${drone.feedback.connectionStatus}</span>
+                <p><strong>Drone Timestamp:</strong> ${convertToReadableTimestamp(drone.feedback.droneTimestamp)}</p>
+                <p><strong>FSM State:</strong> ${drone.feedback.fsmState}</p>
+                <p><strong>Current Altitude:</strong> ${drone.feedback.currentAltitude} m</p>
+                <p><strong>Current Position:</strong> [${drone.feedback.currentPosition.join(", ")}]</p>
+                <p><strong>Current Speed:</strong> ${drone.feedback.currentSpeed.toFixed(2)} m/s</p>
+                <p><strong>Heading:</strong> ${drone.feedback.currentHeading.toFixed(6)}°</p>
+                <p><strong>Distance to Target:</strong> ${drone.feedback.distToTarget.toFixed(1)} m</p>
+                <p><strong>Battery Level:</strong> ${drone.feedback.batteryLevel.toFixed(2)} %</p>
+                <p><strong>ETA to Pickup Point:</strong> ${pickupETA}</p>
+                <p><strong>ETA to Dropoff Point:</strong> ${dropoffETA}</p>
+                <p><strong>ETA to Home Point:</strong> ${homeETA}</p>
+                <p><strong>Network Type:</strong> ${drone.connectivity?.networkType ?? 'N/A'}</p>
+                <p><strong>LTE RSRP:</strong> 
+                    <span style="color:${rsrpQuality.color}; font-weight:bold;">
+                        ${rsrpQuality.label}
+                    </span>
+                </p>
+            `;
 
             if (existingElement) {
                 const droneDetailsElement = existingElement.querySelector(`#drone-details-${drone.id}`);
@@ -320,24 +337,39 @@ document.addEventListener("DOMContentLoaded", function () {
                 newDroneElement.dataset.droneId = drone.id;
 
                 newDroneElement.innerHTML = `
-                <h6 class="accordion-header" id="heading-${drone.id}">
-                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${drone.id}" aria-expanded="false" aria-controls="collapse-${drone.id}">
-                        <img id="drone-icon-${drone.id}" src="./assets/img/icons/svg/blue-drone.svg" alt="Drone Icon">
-                        <span>Drone ${drone.id}</span>
-                        <span class="ms-auto d-flex align-items-center gap-2">
-                            <div class="error-state-drone-${drone.id}"></div>
-                            <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
-                            <label class="switch btn-color-mode-switch">
-                                <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
-                                <label for="data_mode-${drone.id}" data-on="HMB" data-off="RPI" class="btn-color-mode-switch-inner"></label>
-                            </label>
-                        </span>
-                    </button>
-                </h6>
-                <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
-                    <div class="accordion-body" id="drone-details-${drone.id}">${detailsHTML}</div>
-                    <div id="rtl-button-${drone.id}" class="rtl-button"></div>
-                </div>`;
+                    <h6 class="accordion-header" id="heading-${drone.id}">
+                        <div class="accordion-button collapsed">
+                            <img id="drone-icon-${drone.id}" src="./assets/img/icons/svg/blue-drone.svg" alt="Drone Icon">
+
+                            <!-- Drone name is the ONLY toggle -->
+                            <span class="accordion-drone-name flex-grow-1" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#collapse-${drone.id}" 
+                                aria-expanded="false" 
+                                aria-controls="collapse-${drone.id}" 
+                                style="cursor: pointer;">
+                                Drone ${drone.id}
+                            </span>
+
+                            <span class="ms-auto d-flex align-items-center gap-2">
+                                <div class="error-state-drone-${drone.id}"></div>
+                                <div class="signal-bar" id="signal-bar-${drone.id}" 
+                                    title="Signal Strength: ${rsrpQuality.label}">
+                                    ${generateSignalBars(rsrpQuality.level)}
+                                </div>
+                                <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}" me-1></i>
+                                <label class="switch btn-color-mode-switch">
+                                    <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
+                                    <label for="data_mode-${drone.id}" data-on="HMB" data-off="RPI" class="btn-color-mode-switch-inner"></label>
+                                </label>
+                            </span>
+                        </div>
+                    </h6>
+                    <div id="collapse-${drone.id}" class="accordion-collapse collapse" aria-labelledby="heading-${drone.id}">
+                        <div class="accordion-body" id="drone-details-${drone.id}">${detailsHTML}</div>
+                        <div id="rtl-button-${drone.id}" class="rtl-button"></div>
+                    </div>`;
+
                 droneDataContainer.appendChild(newDroneElement);
             }
 
@@ -353,7 +385,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (rtlButtonContainer) {
                 rtlButtonContainer.innerHTML = '';
             }
-        
+
             // Add RTL button if there's any active mission
             if (hasActiveMission && rtlButtonContainer) {
                 const rtlBtn = document.createElement('button');
@@ -362,7 +394,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 rtlBtn.onclick = () => sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
                 rtlButtonContainer.appendChild(rtlBtn);
             }
-        
+
             // Handle the specific DAA conflict state
             if (isDaaConflict) {
                 // Add the Proceed button ONLY in this state
@@ -373,7 +405,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     proceedBtn.onclick = () => proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
                     rtlButtonContainer.appendChild(proceedBtn); // Append, don't replace
                 }
-        
+
                 // Handle other UI elements for DAA
                 if (!conflictedDrones.has(drone.id)) {
                     showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
@@ -406,6 +438,32 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const completedMissions = new Set();
+
+    function getRSRPQuality(rsrp) {
+        if (rsrp === undefined || rsrp === null || isNaN(rsrp)) {
+            return { label: "N/A", color: "gray" };
+        }
+        if (rsrp >= -80) {
+            return { label: "Excellent", color: "green", level: 4 };
+        } else if (rsrp >= -90) {
+            return { label: "Good", color: "limegreen", level: 3 };
+        } else if (rsrp >= -100) {
+            return { label: "Fair", color: "orange", level: 2 };
+        } else if (rsrp >= -120) {
+            return { label: "Weak", color: "red", level: 1 };
+        } else {
+            return { label: "No Signal", color: "darkred", level: 0 };
+        }
+    }
+
+    function generateSignalBars(level) {
+        // level: 0 = worst, 4 = best
+        let bars = '';
+        for (let i = 1; i <= 4; i++) {
+            bars += `<span class="bar ${i <= level ? 'active' : ''}"></span>`;
+        }
+        return bars;
+    }
 
     function timeFormat(eta) {
         return eta && eta !== "N/A"

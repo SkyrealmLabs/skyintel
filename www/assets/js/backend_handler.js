@@ -24,6 +24,10 @@ const handledFatalStates = new Set();
 const fatalCoordinates = {};
 const renderedDrones = new Set();
 const conflictedDrones = new Set();
+// <<< NEW: This Map will store markers for detected objects >>>
+const objectDetectionMarkers = new Map(); // Stores "droneId-objectId" -> L.Marker
+let warningAudio = null; // Global instance for the warning sound
+// <<< END NEW >>>
 
 document.addEventListener("DOMContentLoaded", function () {
     // Map setup
@@ -31,6 +35,52 @@ document.addEventListener("DOMContentLoaded", function () {
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
     }).addTo(map);
+
+    // ==========================================
+    // === 🗺️ NEW: LOAD OBSTACLE GEOJSON DATA ===
+    // ==========================================
+    /**
+     * Loads and displays the obstacle polygons from obstacle.geojson on the map.
+     */
+    function loadObstacles() {
+        // Fetch the obstacle data 
+        fetch('./assets/js/obstacle.geojson')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok for obstacle.geojson');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Define a style for the obstacle polygons
+                const obstacleStyle = {
+                    color: "#e60000",   // A strong red border
+                    weight: 2,
+                    opacity: 0.8,
+                    fillColor: "#ff4d4d", // A semi-transparent red fill
+                    fillOpacity: 0.4
+                };
+
+                // Add the GeoJSON data to the map 
+                L.geoJSON(data, { // 'data' is the content of obstacle.geojson 
+                    style: obstacleStyle,
+                    onEachFeature: function (feature, layer) {
+                        // Add a popup to identify the features as obstacles
+                        layer.bindPopup('<strong>Obstacle Area</strong>');
+                    }
+                }).addTo(map);
+            })
+            .catch(error => {
+                console.error('There was a problem loading the obstacle data:', error);
+            });
+    }
+
+    // Call the function to load obstacles
+    loadObstacles();
+    // ==========================================
+    // ===           END OF NEW CODE          ===
+    // ==========================================
+
 
     locationLegend.onAdd = function () {
         const div = L.DomUtil.create('div', 'location-legend'); // Create the div for the control
@@ -66,7 +116,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var greenDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-green.png' });
 
-    const max_drones = 100;
+    // const max_drones = 100;
 
     const targetIcons = {
         pickup: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
@@ -74,50 +124,50 @@ document.addEventListener("DOMContentLoaded", function () {
         home: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-green.png', iconSize: [25, 41], iconAnchor: [12, 41] })
     };
 
-    for (let a = 0; a < max_drones; a++) {
-        multi_drone_indicator[a] = L.marker([2.9100729431148187, 101.65520813904638], { icon: greenDroneIcon });
-        const htmlData = `<div class="u-container-layout u-container-layout-5 droneInfo">
-                                <p class="u-text u-text-default u-text-data margin-0">Drone ID : ` + a.toString() + `</p>
-                                </div>`;
-        multi_drone_indicator[a].addTo(map).bindPopup(htmlData);
-        droneMarkers[a] = multi_drone_indicator[a];
-    }
+    // for (let a = 0; a < max_drones; a++) {
+    //     multi_drone_indicator[a] = L.marker([2.9100729431148187, 101.65520813904638], { icon: greenDroneIcon });
+    //     const htmlData = `<div class="u-container-layout u-container-layout-5 droneInfo">
+    //                             <p class="u-text u-text-default u-text-data margin-0">Drone ID : ` + a.toString() + `</p>
+    //                             </div>`;
+    //     multi_drone_indicator[a].addTo(map).bindPopup(htmlData);
+    //     droneMarkers[a] = multi_drone_indicator[a];
+    // }
 
     function updateDroneStatus() {
-        if (!simulatedDroneArr || simulatedDroneArr.length === 0) {
-            simulatedDroneArr = new Array(max_drones).fill(null).map((_, i) => ({
-                id: i,
-                requestedByClient: false,
-                command: 'N/A',
-                state: {},
-                feedback: {
-                    connectionStatus: 'Disconnected',
-                    droneTimestamp: 0,
-                    fsmState: 'N/A',
-                    currentAltitude: 0.0,
-                    currentPosition: [0.0, 0.0],
-                    currentSpeed: 0.0,
-                    currentHeading: 0.0,
-                    distToTarget: 0.0,
-                    batteryLevel: 0.0,
-                    weatherState: 'N/A',
-                    mannedFlightState: 'N/A',
-                },
-                eta: {
-                    pickup: "N/A",
-                    dropoff: "N/A",
-                    rtl: "N/A"
-                },
-                connectivity: {
-                    networkType: "N/A",
-                    lteCellID: "N/A",
-                    lteNetworkBand: "N/A",
-                    lteRSSI: -999,
-                    lteRSRP: -999,
-                    lteSNR: -999
-                }
-            }));
-        }
+        // if (!simulatedDroneArr || simulatedDroneArr.length === 0) {
+        //     simulatedDroneArr = new Array(max_drones).fill(null).map((_, i) => ({
+        //         id: i,
+        //         requestedByClient: false,
+        //         command: 'N/A',
+        //         state: {},
+        //         feedback: {
+        //             connectionStatus: 'Disconnected',
+        //             droneTimestamp: 0,
+        //             fsmState: 'N/A',
+        //             currentAltitude: 0.0,
+        //             currentPosition: [0.0, 0.0],
+        //             currentSpeed: 0.0,
+        //             currentHeading: 0.0,
+        //             distToTarget: 0.0,
+        //             batteryLevel: 0.0,
+        //             weatherState: 'N/A',
+        //             mannedFlightState: 'N/A',
+        //         },
+        //         eta: {
+        //             pickup: "N/A",
+        //             dropoff: "N/A",
+        //             rtl: "N/A"
+        //         },
+        //         connectivity: {
+        //             networkType: "N/A",
+        //             lteCellID: "N/A",
+        //             lteNetworkBand: "N/A",
+        //             lteRSSI: -999,
+        //             lteRSRP: -999,
+        //             lteSNR: -999
+        //         }
+        //     }));
+        // }
 
         updateDroneListBySearch("");
 
@@ -145,7 +195,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 console.log("Selected Drone: None");
             } else {
                 selectedDrone = droneId;
-                console.log("Selected Drone:", selectedDrone);
                 $('.recenter').removeClass('active').addClass('inactive');
                 $(icon).addClass('active').removeClass('inactive');
             }
@@ -188,13 +237,51 @@ document.addEventListener("DOMContentLoaded", function () {
         const liveDroneIds = new Set(Object.values(droneData).map(d => d.id));
         const nonMissionStates = new Set(['N/A', 'Idle', 'Ready', 'Landed', 'Mission finished']);
 
+        // <<< NEW: Keep track of all object keys seen in this update cycle >>>
+        const allSeenObjectKeys = new Set();
+        // <<< END NEW >>>
+
+        // Object.values(droneData).forEach(liveDrone => {
+        //     const droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
+        //     if (droneToUpdate) {
+        //         Object.assign(droneToUpdate.feedback, liveDrone.feedback);
+        //         droneToUpdate.eta = liveDrone.eta;
+        //         droneToUpdate.connectivity = liveDrone.connectivity;
+        //     }
+        // });
+
         Object.values(droneData).forEach(liveDrone => {
-            const droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
-            if (droneToUpdate) {
-                Object.assign(droneToUpdate.feedback, liveDrone.feedback);
-                droneToUpdate.eta = liveDrone.eta;
-                droneToUpdate.connectivity = liveDrone.connectivity;
+            let droneToUpdate = simulatedDroneArr.find(d => d.id === liveDrone.id);
+
+            // If the drone is new, create its data object and map marker
+            if (!droneToUpdate) {
+                droneToUpdate = {
+                    id: liveDrone.id,
+                    requestedByClient: false,
+                    command: 'N/A',
+                    state: {},
+                    feedback: {}, // Will be populated below
+                    eta: {},      // Will be populated below
+                    connectivity: {}, // Will be populated below
+                    object_detection: []
+                };
+                simulatedDroneArr.push(droneToUpdate);
+
+                // Create a new marker for the new drone
+                const newMarker = L.marker([2.9100729431148187, 101.65520813904638], { icon: greenDroneIcon });
+                const htmlData = `<div class="u-container-layout u-container-layout-5 droneInfo">
+                                <p class="u-text u-text-default u-text-data margin-0">Drone ID : ${liveDrone.id}</p>
+                            </div>`;
+                newMarker.addTo(map).bindPopup(htmlData);
+                droneMarkers[liveDrone.id] = newMarker;
+                multi_drone_indicator[liveDrone.id] = newMarker; // Ensure this is also assigned
             }
+
+            // Now, update its details (this part is the same as before)
+            Object.assign(droneToUpdate.feedback, liveDrone.feedback);
+            droneToUpdate.eta = liveDrone.eta;
+            droneToUpdate.connectivity = liveDrone.connectivity;
+            droneToUpdate.object_detection = liveDrone.object_detection;
         });
 
         const currentQuery = document.getElementById("searchQueryInput").value.trim();
@@ -214,6 +301,55 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             updateDronePosition(drone);
+
+            // <<< NEW: RENDER OBJECT DETECTION MARKERS >>>
+            if (drone.object_detection && Array.isArray(drone.object_detection)) {
+                drone.object_detection.forEach(obj => {
+
+                    // <<< FIX (v2): Validate the entire object structure first >>>
+                    if (!obj || !obj.object_id || !obj.position || !Array.isArray(obj.position) || obj.position.length < 2) {
+                        // console.warn(`Skipping invalid/incomplete object from drone ${drone.id}. Data:`, obj);
+                        return; // Skip this object
+                    }
+                    // <<< END FIX (v2) >>>
+
+                    // Create a unique key for this object from this drone
+                    const objectKey = `${drone.id}-${obj.object_id}`;
+                    allSeenObjectKeys.add(objectKey); // Mark this object as "seen"
+
+                    // Get the object's position from your data
+                    const objectPosition = L.latLng(obj.position[0], obj.position[1]);
+
+                    // Check if marker already exists
+                    if (objectDetectionMarkers.has(objectKey)) {
+                        // Update existing marker position
+                        objectDetectionMarkers.get(objectKey).setLatLng(objectPosition);
+                    } else {
+                        // Create a new marker (using a simple circle)
+                        const newObjectMarker = L.circleMarker(objectPosition, {
+                            radius: 8,
+                            color: 'orange',      // Border color
+                            weight: 2,
+                            fillColor: '#FFA500', // Fill color
+                            fillOpacity: 0.6
+                        }).addTo(map);
+
+                        // Add a popup with info based on your data structure
+                        newObjectMarker.bindPopup(
+                            `<strong>Detected Object</strong><br>` +
+                            `ID: ${obj.object_id}<br>` +
+                            `From Drone: ${drone.id}<br>` +
+                            `Class: ${obj.class_name}<br>` +
+                            `Distance: ${obj.distance_from_uav.toFixed(2)} m<br>` +
+                            `Moving: ${obj.moving_object}`
+                        );
+
+                        // Store the new marker
+                        objectDetectionMarkers.set(objectKey, newObjectMarker);
+                    }
+                });
+            }
+            // <<< END NEW >>>
 
             if (drone.feedback.fsmState === 'Fatal error' && !handledFatalStates.has(drone.id)) {
                 console.log(`FSM State is Fatal for Drone ${drone.id}, rendering prediction on map.`);
@@ -264,11 +400,25 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         });
 
-        for (let i = 0; i < max_drones; i++) {
-            if (!liveDroneIds.has(i) && droneMarkers[i] && droneMarkers[i].historicalPath) {
-                clearDroneHistoricalPath(i);
+        // <<< NEW: CLEAN UP STALE OBJECT DETECTION MARKERS >>>
+        // After looping through all drones, check for any markers
+        // that are no longer in the "allSeenObjectKeys" set.
+        objectDetectionMarkers.forEach((marker, key) => {
+            if (!allSeenObjectKeys.has(key)) {
+                // This object was not in the latest detection data, so remove it
+                map.removeLayer(marker);
+                objectDetectionMarkers.delete(key); // Remove from our tracking Map
             }
-        }
+        });
+        // <<< END NEW >>>
+
+        // Iterate over all drones we know about
+        simulatedDroneArr.forEach(drone => {
+            // If a known drone is not in the live data feed, clear its path
+            if (!liveDroneIds.has(drone.id)) {
+                clearDroneHistoricalPath(drone.id);
+            }
+        });
     }
 
     function updateDroneListBySearch(query) {
@@ -318,7 +468,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <p><strong>ETA to Dropoff Point:</strong> ${dropoffETA}</p>
                 <p><strong>ETA to Home Point:</strong> ${homeETA}</p>
                 <p><strong>Network Type:</strong> ${drone.connectivity?.networkType ?? 'N/A'}</p>
-                <p><strong>LTE RSRP:</strong> 
+                <p><strong>Signal Strength:</strong> 
                     <span style="color:${rsrpQuality.color}; font-weight:bold;">
                         ${rsrpQuality.label}
                     </span>
@@ -341,7 +491,6 @@ document.addEventListener("DOMContentLoaded", function () {
                         <div class="accordion-button collapsed">
                             <img id="drone-icon-${drone.id}" src="./assets/img/icons/svg/blue-drone.svg" alt="Drone Icon">
 
-                            <!-- Drone name is the ONLY toggle -->
                             <span class="accordion-drone-name flex-grow-1" 
                                 data-bs-toggle="collapse" 
                                 data-bs-target="#collapse-${drone.id}" 
@@ -379,7 +528,11 @@ document.addEventListener("DOMContentLoaded", function () {
             const droneVideoFeedContainer = document.getElementById("drone-video-feed");
 
             const hasActiveMission = !nonMissionStates.has(drone.feedback.fsmState);
-            const isDaaConflict = drone.feedback.fsmState === 'Forward DAA conflict';
+
+            // FIX 1: Case-insensitive check
+            const fsmState = (drone.feedback.fsmState || '').toLowerCase();
+            const isDaaConflict = fsmState === 'forward daa conflict';
+            const droneId = (drone.id === 1000) ? 0 : drone.id;
 
             // Clear the container to rebuild it based on the current state
             if (rtlButtonContainer) {
@@ -391,7 +544,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 const rtlBtn = document.createElement('button');
                 rtlBtn.textContent = 'RTL';
                 rtlBtn.className = 'btn btn-warning w-100 justify-content-center';
-                rtlBtn.onclick = () => sendRTLCommandToDrone(drone.id, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
+                rtlBtn.onclick = () => sendRTLCommandToDrone(droneId, rtlButtonContainer, errorStateContainer, droneVideoFeedContainer);
                 rtlButtonContainer.appendChild(rtlBtn);
             }
 
@@ -402,29 +555,70 @@ document.addEventListener("DOMContentLoaded", function () {
                     const proceedBtn = document.createElement('button');
                     proceedBtn.textContent = 'Proceed';
                     proceedBtn.className = 'btn btn-info w-100 justify-content-center';
-                    proceedBtn.onclick = () => proceedWithMission(drone.id, rtlButtonContainer, errorStateContainer);
+                    proceedBtn.onclick = () => proceedWithMission(droneId, rtlButtonContainer, errorStateContainer);
                     rtlButtonContainer.appendChild(proceedBtn); // Append, don't replace
                 }
 
+                // FIX 2: Check if the stream was closed by the user. If so, reset the state so it can reopen if needed.
+                const existingStream = document.getElementById(`drone-stream-container-${droneId}`);
+                if (!existingStream && conflictedDrones.has(droneId)) {
+                    conflictedDrones.delete(droneId);
+                }
+
                 // Handle other UI elements for DAA
-                if (!conflictedDrones.has(drone.id)) {
+                if (!conflictedDrones.has(droneId)) {
                     showModernToast('warning', 'Warning!', `Forward DAA conflicted for Drone ${drone.id}`);
                     if (errorStateContainer) {
                         errorStateContainer.innerHTML = `<i class="bi bi-exclamation-triangle-fill text-warning me-1 blinking-icon" title="Forward DAA Conflicted"></i>`;
                     }
-                    requestDroneVideoStream(drone.id, droneVideoFeedContainer);
-                    conflictedDrones.add(drone.id);
+                    requestDroneVideoStream(droneId, droneVideoFeedContainer);
+                    conflictedDrones.add(droneId);
                 }
             } else {
                 // Clean up DAA-specific UI if the state is no longer DAA conflict
-                if (conflictedDrones.has(drone.id)) {
+                if (conflictedDrones.has(droneId)) {
                     if (errorStateContainer) errorStateContainer.innerHTML = '';
-                    const streamContainer = document.getElementById(`drone-stream-container-${drone.id}`);
+                    const streamContainer = document.getElementById(`drone-stream-container-${droneId}`);
                     if (streamContainer) streamContainer.remove();
-                    conflictedDrones.delete(drone.id);
+                    conflictedDrones.delete(droneId);
+                    const disconnectStreamAPIUrl = `https://gcs.zulsyah.com/disconnect_drone_camera/${droneId}`;
+                    fetch(disconnectStreamAPIUrl)
+                        .then(response => {
+                            // Check if the response was successful (status in the 200-299 range)
+                            if (!response.ok) {
+                                // Throw an error if the HTTP status is not successful
+                                throw new Error(`HTTP error! status: ${response.status}`);
+                            }
+                            console.log(`Successfully disconnect stream from the Drone ${droneId}`);
+                            // If you expect a JSON response, you can parse it here:
+                            // return response.json(); 
+                        })
+                        .catch(error => {
+                            // Handle any errors that occurred during the fetch or in the .then block
+                            console.error(`Failed to disconnect drone camera for Drone ${droneId}:`, error);
+                        });
                 }
             }
-        });
+
+        }); // <<< END of filteredDroneArr.forEach
+
+        // After the loop, check if *any* drone is in a conflict state
+        if (conflictedDrones.size > 0) {
+            // At least one drone is in conflict. Play audio if not already playing.
+            if (!warningAudio) {
+                warningAudio = new Audio('../assets/audio/warning-alert.mp3');
+                warningAudio.loop = true; // Loop the audio for a persistent warning
+                warningAudio.play().catch(err => console.warn('Audio play failed:', err));
+            }
+        } else {
+            // NO drones are in conflict. Stop the audio if it is playing.
+            if (warningAudio) {
+                warningAudio.pause();
+                warningAudio.currentTime = 0; // Reset to start
+                warningAudio = null; // Clear the instance
+            }
+        }
+        // ===============================================
 
         const hasDrones = droneDataContainer.querySelector('.accordion-item');
         const noDronesMessage = droneDataContainer.querySelector('.no-drones-message');
@@ -576,19 +770,49 @@ document.addEventListener("DOMContentLoaded", function () {
         setTimeout(() => toast.remove(), 4000);
     }
 
+    // FIX 3: Update CSS and size to ensure video appears floating
     function requestDroneVideoStream(droneId, droneVideoFeedContainer) {
         if (document.getElementById(`drone-stream-container-${droneId}`)) return;
+
         const streamContainer = document.createElement('div');
         streamContainer.id = `drone-stream-container-${droneId}`;
-        Object.assign(streamContainer.style, { position: 'relative', display: 'inline-block', width: '420px', height: '236px', marginTop: '10px', border: '2px solid #ccc', borderRadius: '8px', overflow: 'hidden' });
+
+        // <<< START CHANGE: Remap 1000 -> 0 for the URL only >>>
+        const videoStreamId = (droneId === 1000) ? 0 : droneId;
+        // <<< END CHANGE >>>
+
+        Object.assign(streamContainer.style, {
+            position: 'relative',
+            display: 'block',
+            width: '420px',       // Fixed width for floating video
+            height: '240px',      // Forced height to prevent "line" bug
+            marginTop: '0px',
+            border: '2px solid #ccc',
+            borderRadius: '8px',
+            overflow: 'hidden',
+            backgroundColor: '#000', // Black bg so box is visible
+            zIndex: '10000'
+        });
+
         const mjpegImg = document.createElement('img');
         mjpegImg.id = `drone-stream-${droneId}`;
-        mjpegImg.src = `https://gcs.zulsyah.com/drone_camera/${droneId}`;
-        Object.assign(mjpegImg, { width: 420, height: 236, alt: `Live stream from Drone ${droneId}` });
+
+        // Use the remapped ID for the source
+        mjpegImg.src = `https://gcs.zulsyah.com/drone_camera/${videoStreamId}`;
+
+        Object.assign(mjpegImg, {
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover', // Ensures video fills the 240px height
+            alt: `Live stream from Drone ${droneId}`
+        });
         mjpegImg.style.display = 'block';
+
         const overlayText = document.createElement('div');
+        // Keep the original droneId for the label (so it matches the UI list)
         overlayText.textContent = `🔴 Live stream from Drone ${droneId}`;
         Object.assign(overlayText.style, { position: 'absolute', top: '8px', left: '8px', backgroundColor: 'rgba(0, 0, 0, 0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '14px', fontWeight: 'bold' });
+
         const closeBtn = document.createElement('i');
         closeBtn.className = 'bi bi-x-circle-fill';
         Object.assign(closeBtn.style, { position: 'absolute', top: '6px', right: '8px', fontSize: '20px', color: 'white', cursor: 'pointer' });

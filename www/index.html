@@ -7,17 +7,14 @@
   <link rel="icon" type="image/png" href="./assets/img/drone-icon.png">
   <title>SkyIntel - Drone Fleet Monitoring</title>
 
-  <!-- Fonts and icons -->
   <link rel="stylesheet" type="text/css"
     href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900|Roboto+Slab:400,700" />
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.5.0/font/bootstrap-icons.min.css"
     rel="stylesheet">
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-  <!-- CSS Files -->
   <link id="pagestyle" href="./assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
   <link id="pagestyle" href="./assets/css/style.css" rel="stylesheet" />
 
@@ -25,59 +22,84 @@
 
 <body class="g-sidenav-show bg-gray-200">
 
-  <!-- Navigation Header -->
   <header class="navbar">
     <div class="navbar-inner">
       <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
         aria-expanded="false">
         <i class="material-icons">person</i>
-        <span>Login</span>
+        <span id="username"></span>
       </button>
-      <ul class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login" aria-labelledby="dropdownMenuButton">
-        <div class="card card-plain">
+      <ul id="login-card" class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login"
+        aria-labelledby="dropdownMenuButton">
+        <div id="profileLogin" class="card card-plain">
           <div class="card-header text-center">
             <h4 class="font-weight-bolder">Sign In</h4>
             <p class="mb-0">Enter your email and password to sign in</p>
           </div>
           <div class="card-body mt-2">
-            <form role="form">
+            <form id="loginForm1" role="form" method="post" action="javascript:void(0)">
               <div class="input-group input-group-outline mb-3">
                 <label class="form-label">Email</label>
-                <input type="email" class="form-control">
+                <input type="email" id="email1" name="email" class="form-control" required>
               </div>
               <div class="input-group input-group-outline mb-3">
                 <label class="form-label">Password</label>
-                <input type="password" class="form-control">
+                <input type="password" id="password1" name="password" class="form-control" required>
               </div>
-              <div class="form-check form-switch d-flex align-items-center mb-3">
-                <input class="form-check-input" type="checkbox" id="rememberMe">
-                <label class="form-check-label mb-0 ms-3" for="rememberMe">Remember me</label>
+              <div class="d-flex align-items-center mb-3">
+                <a href="#" class="forgot-password">Forgot Password ?</a>
               </div>
               <div class="text-center">
-                <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign in</button>
+                <button type="submit" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign in</button>
               </div>
             </form>
           </div>
         </div>
+        <div id="profileContent" class="card card-plain">
+          <div class="card-header text-center">
+            <h4 class="font-weight-bolder">Profile</h4>
+          </div>
+          <div class="card-body">
+            <div class="profile">
+              <div class="row">
+                <div class="col-md-12">
+                  <label>USERNAME</label>
+                  <p id="usernameTxt"></p>
+                </div>
+              </div>
+              <div class="row">
+                <div class="col-md-12">
+                  <label>EMAIL</label>
+                  <p id="emailTxt"></p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer">
+            <div class="row">
+              <div class="col-md-12">
+                <button class="btn btn-logout w-100">Logout</button>
+              </div>
+            </div>
+          </div>
+        </div>
       </ul>
-      
+
       <button id="open-sidenav-button" class="open-sidenav-button">
         <i class="material-icons">menu</i>
       </button>
 
-      <!-- Logo in center -->
       <img src="./assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
     </div>
   </header>
 
 
-  <div id="map"></div> <!-- Map container -->
+  <div id="map"></div> <div id="drone-video-feed" class="drone-video-feed"></div>
 
   <main class="main-content position-relative max-height-vh-100 h-100 border-radius-lg">
 
     <div class="container-fluid py-4">
-      <!-- Main content goes here -->
-    </div>
+      </div>
   </main>
   <div class="fixed-plugin">
     <a class="fixed-plugin-button text-dark position-fixed px-3 py-2">
@@ -87,15 +109,13 @@
       <div class="card-header pb-0 pt-3">
         <div class="float-start">
           <h5 class="mt-3 mb-0">Sensor Data</h5>
-          <!-- <p>See our dashboard options.</p> -->
-        </div>
+          </div>
         <div class="float-end mt-4">
           <button class="btn btn-link text-dark p-0 fixed-plugin-close-button">
             <i class="material-icons">clear</i>
           </button>
         </div>
-        <!-- End Toggle Button -->
-      </div>
+        </div>
       <div class="searchBar">
         <input id="searchQueryInput" type="text" name="searchQueryInput" placeholder="Search" />
         <button id="searchQuerySubmit" type="submit" name="searchQuerySubmit">
@@ -107,7 +127,6 @@
       </div>
       <br>
       <div class="card-body pt-0 scrollable-container">
-        <!-- collapse list -->
         <div class="accordion" id="accordionExample">
 
           <div id="droneDataContainer"></div>
@@ -115,34 +134,35 @@
       </div>
     </div>
     <div class="modern-toast-container" id="modern-toast-container"></div>
-    <div id="drone-video-feed" class="drone-video-feed"></div>
   </div>
-  <!-- Right Sidenav -->
   <aside id="right-sidenav" class="right-sidenav">
     <div class="sidenav-body">
       <button id="close-sidenav-button" class="close-btn">&times;</button>
-      <!-- <div class="card card-plain">
+      <div id="sidebarLogin" class="card card-plain">
         <div class="card-header text-center">
           <h4 class="font-weight-bolder">You're not a member of SkyIntel</h4>
           <p class="mb-0">Please sign in as member</p>
         </div>
         <div class="card-body mt-2">
-          <form role="form">
+          <form id="loginForm2" method="post" action="javascript:void(0)">
             <div class="input-group input-group-outline mb-3">
               <label class="form-label">Email</label>
-              <input type="email" class="form-control">
+              <input type="email" id="email2" name="email" class="form-control" required>
             </div>
             <div class="input-group input-group-outline mb-3">
               <label class="form-label">Password</label>
-              <input type="password" class="form-control">
+              <input type="password" id="password2" name="password" class="form-control" required>
+            </div>
+            <div class="input-group input-group-outline mb-3">
+              <a href="#" class="forgot-password">Forgot Password ?</a>
             </div>
             <div class="text-center">
-              <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign in</button>
+              <button type="submit" class="btn btn-lg bg-gradient-warning w-100 mt-4 mb-0">Sign in</button>
             </div>
           </form>
         </div>
-      </div> -->
-      <ul class="navbar-nav">
+      </div>
+      <ul id="sidebarContent" class="navbar-nav hidden">
         <li class="nav-item">
           <a class="nav-link active" href="/">
             <i class="material-icons-round opacity-10">navigation</i>
@@ -162,11 +182,12 @@
           </a>
         </li>
         <li class="nav-item">
-          <a data-bs-toggle="collapse" href="#droneDropdown" class="nav-link "
-            aria-controls="droneDropdown" role="button" aria-expanded="false">
+          <a data-bs-toggle="collapse" href="#droneDropdown" class="nav-link " aria-controls="droneDropdown"
+            role="button" aria-expanded="false">
             <i class="material-icons-round opacity-10">flight</i>
             <span class="nav-link-text ms-2 ps-1">Drone</span>
-            <i class="material-icons-round dropdown-icon transition" id="droneDropdownIcon" style="margin-left: 218px;">expand_more</i>
+            <i class="material-icons-round dropdown-icon transition" id="droneDropdownIcon"
+              style="margin-left: 218px;">expand_more</i>
           </a>
           <div class="collapse " id="droneDropdown">
             <ul class="nav d-flex flex-column mt-1 gap-1">
@@ -192,24 +213,82 @@
           </div>
         </li>
         <li class="nav-item">
-          <a data-bs-toggle="collapse" href="#adminDropdown" class="nav-link "
-            aria-controls="adminDropdown" role="button" aria-expanded="false">
+          <a data-bs-toggle="collapse" href="#adminDropdown" class="nav-link " aria-controls="adminDropdown"
+            role="button" aria-expanded="false">
             <i class="material-icons-round opacity-10">admin_panel_settings</i>
             <span class="nav-link-text ms-2 ps-1">Administration</span>
-            <i class="material-icons-round dropdown-icon transition" id="adminDropdownIcon" style="margin-left: 156px;">expand_more</i>
+            <i class="material-icons-round dropdown-icon transition" id="adminDropdownIcon"
+              style="margin-left: 156px;">expand_more</i>
           </a>
           <div class="collapse" id="adminDropdown">
             <ul class="nav d-flex flex-column mt-1 gap-1">
               <li class="nav-item ">
-                <a class="nav-link" href="./administration/users/">
-                  <span class="sidenav-mini-icon"> U </span>
-                  <span class="sidenav-normal  ms-2  ps-1"> User List </span>
+                <a class="nav-link" href="./administration/enrollment/">
+                  <span class="sidenav-mini-icon"> E </span>
+                  <span class="sidenav-normal  ms-2  ps-1"> Enrollment </span>
                 </a>
               </li>
             </ul>
           </div>
         </li>
       </ul>
+      <div class="modal fade" id="changePasswordModal" tabindex="-1" role="dialog"
+        aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title font-weight-normal" id="changePasswordModalLabel">Change Password</h5>
+              <button type="button" class="btn-close text-dark" data-bs-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <div class="input-group input-group-outline">
+                <label class="form-label">Temporary password</label>
+                <input id="currentPassword" type="password" class="form-control">
+              </div>
+              <div class="input-group input-group-outline my-4">
+                <label class="form-label">New password</label>
+                <input id="newPassword" type="password" class="form-control">
+              </div>
+              <div class="input-group input-group-outline">
+                <label class="form-label">Confirm New password</label>
+                <input id="confirmPassword" type="password" class="form-control">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" id="closeUploadModal" class="btn bg-gradient-secondary"
+                data-bs-dismiss="modal">Close</button>
+              <button type="button" onclick="updatePassword()" class="btn bg-gradient-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal fade" id="forgotPasswordModal" tabindex="-1" role="dialog"
+        aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" role="document">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title font-weight-normal" id="forgotPasswordModalLabel">Forgot Password</h5>
+              <button type="button" class="btn-close text-dark" data-bs-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+            <div class="modal-body">
+              <label class="form-label">Please insert your registered email</label>
+              <div class="input-group input-group-outline">
+                <label class="form-label">Email</label>
+                <input id="userEmail" type="email" class="form-control">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" id="closeUploadModal" class="btn bg-gradient-secondary"
+                data-bs-dismiss="modal">Close</button>
+              <button type="button" onclick="forgotPassword()" class="btn bg-gradient-primary">Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -218,20 +297,23 @@
     const video = document.getElementById('video');
     const videoSrc = 'https://gcs.zulsyah.com/drone_camera/0';
 
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, function () {
-        video.play();
-      });
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = videoSrc;
-      video.addEventListener('loadedmetadata', function () {
-        video.play();
-      });
-    } else {
-      console.error('HLS not supported');
+    // Added safety check
+    if (video) {
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(videoSrc);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, function () {
+            video.play();
+          });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = videoSrc;
+          video.addEventListener('loadedmetadata', function () {
+            video.play();
+          });
+        } else {
+          console.error('HLS not supported');
+        }
     }
 
     function toggleSidenav() {
@@ -240,26 +322,33 @@
 
   </script>
 
-  <!-- Core JS Files -->
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js">
+  </script>
+  <script type="text/javascript">
+    (function () {
+      emailjs.init({
+        publicKey: "o1Jw7jpeCQwrIEANA",
+      });
+    })();
+  </script>
+
   <script src="./assets/js/core/popper.min.js"></script>
   <script src="./assets/js/core/bootstrap.min.js"></script>
   <script src="./assets/js/plugins/perfect-scrollbar.min.js"></script>
   <script src="./assets/js/plugins/smooth-scrollbar.min.js"></script>
   <script src="./assets/js/plugins/jquery.min.js"></script>
 
-  <!-- Kanban scripts -->
   <script src="./assets/js/plugins/dragula/dragula.min.js"></script>
   <script src="./assets/js/plugins/jkanban/jkanban.js"></script>
   <script src="./assets/js/plugins/chartjs.min.js"></script>
 
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Control Center for Material Dashboard -->
   <script src="./assets/js/material-dashboard.js?v=3.0.6"></script>
   <script src="./assets/js/leaflet.rotatedMarker.js"></script>
   <script src="./assets/js/backend_handler.js"></script>
   <script src="./assets/js/index.js"></script>
+  <script src="./assets/js/login.js"></script>
 </body>
 
 </html>

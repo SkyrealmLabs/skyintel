@@ -87,6 +87,40 @@ header.navbar {
   top: 70% !important;
 }
 
+.dropdown-login .card-plain {
+  width: 340px;
+}
+
+.dropdown-login .card-plain .profile {
+  background: #f1f1f1;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+.dropdown-login .profile label {
+  margin-left: 0 !important;
+}
+
+.dropdown-login .profile p {
+  font-weight: bold;
+}
+
+.dropdown-login .card-footer .btn-logout {
+  background: transparent;
+  /* no fill */
+  border: 2px solid #08356D;
+  /* light blue border */
+  color: #08356D;
+  /* text color same as border */
+  padding: 10px 20px;
+  /* spacing */
+  border-radius: 6px;
+  /* rounded corners */
+  font-weight: bold;
+  /* bold text */
+  cursor: pointer;
+}
+
 .open-sidenav-button {
   position: absolute;
   right: 20px;
@@ -535,18 +569,18 @@ main.main-content {
 }
 
 .drone-video-feed {
-  position: absolute;
-  top: 70px;
-  right: 20px;
+  position: fixed;       /* Pins it to the screen viewport */
+  top: 90px;             /* 90px from top (clears your 80px Navbar) */
+  right: 20px;           /* 20px from the right edge */
+  z-index: 9999;         /* Ensures it sits on top of everything */
   display: flex;
   flex-direction: column;
-  /* Stack streams vertically */
   gap: 10px;
-  /* Space between each stream */
-  max-height: 90vh;
-  overflow-y: auto;
-  /* background-color: rgba(0, 0, 0, 0.6); optional for contrast */
-  padding: 10px;
+  width: auto;
+  height: auto;
+  max-height: 80vh;      
+  overflow-y: auto;      
+  padding: 0;
   border-radius: 8px;
 }
 
@@ -1057,27 +1091,53 @@ select.form-control option {
 }
 
 .signal-bar {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    width: 20px;
-    height: 14px;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  width: 20px;
+  height: 14px;
 }
 
 .signal-bar .bar {
-    width: 3px;
-    background-color: #ccc;
-    border-radius: 2px;
-    transition: background-color 0.3s;
+  width: 3px;
+  background-color: #ccc;
+  border-radius: 2px;
+  transition: background-color 0.3s;
 }
 
-.signal-bar .bar:nth-child(1) { height: 4px; }
-.signal-bar .bar:nth-child(2) { height: 7px; }
-.signal-bar .bar:nth-child(3) { height: 10px; }
-.signal-bar .bar:nth-child(4) { height: 13px; }
+.signal-bar .bar:nth-child(1) {
+  height: 4px;
+}
+
+.signal-bar .bar:nth-child(2) {
+  height: 7px;
+}
+
+.signal-bar .bar:nth-child(3) {
+  height: 10px;
+}
+
+.signal-bar .bar:nth-child(4) {
+  height: 13px;
+}
 
 .signal-bar .bar.active {
-    background-color: #4caf50; /* green for active signal */
+  background-color: #4caf50;
+  /* green for active signal */
+}
+
+.capitalize {
+  text-transform: capitalize;
+}
+
+.address-column {
+  max-width: 450px;
+  /* Adjust this pixel value as needed */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  /* Required for max-width to work in some table layouts */
 }
 
 /* Responsive adjustments */

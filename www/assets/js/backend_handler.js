@@ -777,9 +777,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const streamContainer = document.createElement('div');
         streamContainer.id = `drone-stream-container-${droneId}`;
 
-        // <<< START CHANGE: Remap 1000 -> 0 for the URL only >>>
         const videoStreamId = (droneId === 1000) ? 0 : droneId;
-        // <<< END CHANGE >>>
 
         Object.assign(streamContainer.style, {
             position: 'relative',

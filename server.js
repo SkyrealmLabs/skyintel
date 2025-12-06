@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const CryptoJS = require('crypto-js');
 const fs = require('fs');
+const { spawn } = require('child_process'); // Diperlukan untuk menjalankan Python
 
 const saltRounds = 10;
 const host = "127.0.0.1";
@@ -16,15 +17,15 @@ const {
   JWT_SECRET,
   RECAPTCHA_SECRET,
   SECRET_KEY
-  // UPLOAD_DIRECTORY
 } = require('./constant');
 const UPLOAD_DIRECTORY = path.join(__dirname, 'uploads');
 
 // Serve static files (your HTML, CSS, JavaScript)
 app.use(express.static(path.join(__dirname, 'www')));
 
-// Add JSON middleware
-app.use(express.json());
+// 🔥 PENTING: Add JSON middleware dengan had yang lebih tinggi (50mb) untuk Base64
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true })); // Tambah ini sebagai langkah berjaga-jaga
 
 // CORS middleware
 app.use((req, res, next) => {
@@ -763,7 +764,8 @@ app.get('/api/location/get', (req, res) => {
     FROM location l
     INNER JOIN location_status ls ON l.locationStatusId = ls.id
     INNER JOIN user u ON l.userid = u.id
-    WHERE l.isDeleted = false AND u.isDeleted = false;
+    WHERE l.isDeleted = false AND u.isDeleted = false
+    ORDER BY id DESC;
   `;
 
   db.query(query, (err, results) => {
@@ -795,7 +797,7 @@ app.post('/api/location/getLocationByUserId', (req, res) => {
     FROM location l
     INNER JOIN location_status ls ON l.locationStatusId = ls.id
     WHERE l.isDeleted = false AND l.userid = ?
-  `;
+    ORDER BY id DESC`;
 
   db.query(query, [userID], (err, results) => {
     if (err) {
@@ -819,7 +821,7 @@ app.post('/api/location/getLocationByUserId', (req, res) => {
 
 // Get Location Details By ID API
 app.post('/api/location/getLocationDetailsById', (req, res) => {
-  const ID = req.body.ID; 
+  const ID = req.body.ID;
 
   // Check if ID is provided
   if (!ID) {
@@ -1044,6 +1046,67 @@ app.post('/api/location/validate', (req, res) => {
   });
 });
 
+// API: Server-Side ArUco Scan (Menggunakan Python Subprocess)
+app.post('/api/aruco/scan', (req, res) => {
+  const { image } = req.body; // Base64 dataURL dari frontend
+
+  if (!image) {
+    return res.status(400).json({ success: false, error: 'No image provided.' });
+  }
+
+  // Tentukan jalan ke skrip Python
+  const pythonScript = path.join(__dirname, 'aruco_scanner.py');
+
+  // Cipta child process untuk menjalankan skrip Python
+  // 🔥 PERHATIAN: Gunakan 'python' jika 'python3' tidak berfungsi pada sistem anda (lazim di Windows)
+  const pythonProcess = spawn('python', [pythonScript]);
+  // const pythonProcess = spawn('python3', [pythonScript]); // Alternatif untuk Linux/Mac
+
+  let pythonOutput = '';
+  let pythonError = '';
+
+  // Menerima output dari Python (stdout)
+  pythonProcess.stdout.on('data', (data) => {
+    pythonOutput += data.toString();
+  });
+
+  // Menerima ralat dari Python (stderr)
+  pythonProcess.stderr.on('data', (data) => {
+    pythonError += data.toString();
+  });
+
+  // Apabila child process ditutup
+  pythonProcess.on('close', (code) => {
+
+    if (code !== 0) {
+      console.error(`Python script exited with code ${code}. Stderr: ${pythonError}`);
+      return res.status(500).json({ success: false, error: 'Python script error or failed to run.' });
+    }
+
+    try {
+      // Parse JSON output dari Python
+      const result = JSON.parse(pythonOutput);
+
+      if (result.success && result.arucoId !== null) {
+        res.json({ success: true, arucoId: result.arucoId });
+      } else {
+        console.log(`❌ ARUCO NOT FOUND. Reason: ${result.error || 'No IDs detected.'}`);
+        res.json({ success: false, error: result.error || 'No ArUco Marker found.' });
+      }
+    } catch (e) {
+      console.error("Error parsing Python output:", e);
+      console.log("Raw Python Output:", pythonOutput);
+      return res.status(500).json({ success: false, error: 'Failed to parse scanner output.' });
+    }
+  });
+
+  // Menghantar data imej Base64 (JSON string) ke stdin Python
+  const inputPayload = JSON.stringify({ image: image });
+  pythonProcess.stdin.write(inputPayload);
+  pythonProcess.stdin.end(); // Penting: Menutup input stream
+});
+
+
 // Add No Fly Zone API
 app.post('/api/noFlyZone/add', (req, res) => {
   const { name, description, latitude, longitude, userID } = req.body;
@@ -1093,7 +1156,8 @@ app.post('/api/noFlyZone/getNoFlyZoneByUserId', (req, res) => {
   const query = `
     SELECT id, name, description, latitude, longitude, user_id
     FROM no_fly_zone 
-    WHERE user_id = ? AND isDeleted = 0;
+    WHERE user_id = ? AND isDeleted = 0
+    ORDER BY id DESC;
   `;
 
   db.query(query, [userID], (err, results) => {

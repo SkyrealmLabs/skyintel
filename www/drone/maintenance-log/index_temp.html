@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Under Development</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
+    
+    <style>
+        /* 1. Global Setup */
+        body {
+            background-color: #08356D; /* Deep Teal/Navy Blue */
+            color: #ffffff;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            /* Center content perfectly */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+            overflow: hidden;
+        }
+
+        /* 2. Main Content Container (Glassmorphism Effect) */
+        .container {
+            background: rgba(255, 255, 255, 0.05); 
+            border-radius: 20px;
+            padding: 60px 40px;
+            box-shadow: 0 8px 32px 0 rgba(8, 53, 109, 0.5); 
+            backdrop-filter: blur(4px); 
+            -webkit-backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            max-width: 90%;
+            width: 500px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 1.5s forwards;
+        }
+
+        /* 3. Typography Styling */
+        h2 {
+            font-size: 1.5em;
+            font-weight: 300;
+            margin-bottom: 5px;
+            color: #F7A82C; /* ACCENT COLOR */
+        }
+
+        h1 {
+            font-size: 3em;
+            font-weight: 600;
+            /* Gradient Text using ACCENT COLOR */
+            background: linear-gradient(90deg, #F7A82C, #FFC77D); 
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5em;
+        }
+
+        p {
+            font-size: 1.2em;
+            font-weight: 300;
+            line-height: 1.6;
+            margin-bottom: 30px;
+            color: #c4c4c4;
+        }
+
+        /* 4. Button Container */
+        .button-group {
+            display: flex;
+            justify-content: center;
+            gap: 15px; 
+            margin-top: 30px;
+        }
+
+        /* 5. Primary CTA Button (Go to Homepage) */
+        .cta-button {
+            display: inline-block;
+            padding: 12px 25px;
+            background-color: #F7A82C; /* ACCENT COLOR */
+            color: #08356D; /* PRIMARY COLOR for contrast */
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: 600;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(247, 168, 44, 0.4); 
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .cta-button:hover {
+            background-color: #e59a27; 
+            transform: translateY(-2px);
+        }
+        
+        /* 6. Contact Link (Subtle Style) */
+        .contact-link {
+            display: inline-block;
+            padding: 12px 25px;
+            background: none; 
+            color: #F7A82C; /* Text uses ACCENT COLOR */
+            text-decoration: none;
+            border: 1px solid #F7A82C; /* Border uses ACCENT COLOR */
+            border-radius: 50px;
+            font-weight: 600;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .contact-link:hover {
+            background-color: #F7A82C; 
+            color: #08356D; /* Text changes to PRIMARY COLOR on hover */
+            transform: translateY(-2px);
+        }
+
+        /* 7. Fade-in Animation */
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 style="color: #F7A82C;">🚧 Status Update 🚧</h2>
+        
+        <h1>This page is under development</h1>
+        
+        <p>We are currently updating this specific section to bring you new features and a better experience. Thank you for your patience!</p>
+        
+        <div class="button-group">
+            
+            <a href="/" class="cta-button">
+                &larr; Go to Main Site
+            </a>
+
+        </div>
+
+    </div>
+
+</body>
+</html>

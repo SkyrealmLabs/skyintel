@@ -1,7 +1,7 @@
 // Global variables for Map and Location
 let map;
 let marker;
-let currentLocationID; // Menyimpan ID lokasi untuk digunakan dalam Approval/Rejection
+let currentLocationID; // Menyimpan ID lokasi dari URL (tidak disulitkan)
 let currentUserName; // Menyimpan nama pengguna yang sedang log masuk
 let currentUserID;   // Menyimpan ID pengguna yang sedang log masuk
 
@@ -10,17 +10,13 @@ const encryptedId = params.get('id');
 
 // --- Global variables for ArUco scanning ---
 let videoElement = null;
-let canvasOutput = null;
+let canvasOutput = null; 
 let videoStream = null;
-let src = null;
-let dst = null;
-let dictionary = null;
-let detector = null;
 let processingInterval = null;
-const ARUCO_DICT = 4; // Menggunakan DICT_6X6_250
+let isScanning = false; 
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (Sidebar & Dropdown Logic - KEPT AS IS) ...
+    // --- Sidebar & Dropdown Logic (Kept as is) ---
     const openSideNav = document.getElementById("open-sidenav-button");
     const closeSideNav = document.getElementById("close-sidenav-button");
 
@@ -46,22 +42,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Initialization ---
     initMap(); 
-
+    
+    // PENTING: Inisialisasi elemen DOM scanner
     videoElement = document.getElementById('videoElement');
     canvasOutput = document.getElementById('canvasOutput');
-    
+
     if (!videoElement || !canvasOutput) {
-        console.error("Critical Error: videoElement or canvasOutput not found in HTML.");
-        // Anda boleh tambah Swal.fire di sini jika perlu.
+        console.error("Critical Error: Scanner elements (videoElement or canvasOutput) not found in HTML.");
     }
     
-    // Dapatkan maklumat pengguna yang log masuk
+    // Dapatkan maklumat pengguna yang log masuk dari localStorage
     const user = JSON.parse(localStorage.getItem('user'));
     if (user) {
         currentUserID = user.id;
         currentUserName = user.name;
     }
-
 
     if (encryptedId) {
         handleUserDecryption(encryptedId);
@@ -92,8 +87,6 @@ function initMap() {
 
 async function handleUserDecryption(encryptedId) {
     try {
-        // Assuming decryptionID is available globally from login.js or similar
-        // Jika decryptionID tidak global, anda perlu mengimplementasikannya di sini:
         const response = await fetch('/api/decrypt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -102,7 +95,7 @@ async function handleUserDecryption(encryptedId) {
         const result = await response.json();
         
         if (response.ok && result.id) {
-            currentLocationID = result.id; // Simpan ID lokasi yang tidak disulitkan
+            currentLocationID = result.id;
             fetchLocationDetails(currentLocationID);
         } else {
             throw new Error(result.error || "Decryption API failed");
@@ -160,32 +153,123 @@ function updateUI(data) {
     // 3. Update Video
     if (data.mediaPath) {
         const videoPlayer = document.getElementById('videoPlayer');
-        const filename = data.mediaPath.split(/[\\/]/).pop(); // Split by both '\' or '/'
+        const filename = data.mediaPath.split(/[\\/]/).pop(); 
 
-        // Pastikan URL video sepadan dengan konfigurasi server anda
-        const videoUrl = `/uploads/${filename}`; 
+        const videoUrl = `https://skyintel.zulsyah.com/uploads/${filename}`; 
 
         console.log("Loading video from:", videoUrl);
 
         videoPlayer.src = videoUrl;
         videoPlayer.load(); 
+        videoPlayer.style.height = "350px";
     }
 }
 
-// ------------------------------------
-// --- ArUco SCANNER IMPLEMENTATION ---
-// ------------------------------------
+function captureAndScanFrame() {
+    if (!videoElement || !canvasOutput || !isScanning) return;
+
+    let context = canvasOutput.getContext('2d');
+    
+    // Pastikan video mempunyai data yang mencukupi
+    if (videoElement.readyState >= videoElement.HAVE_CURRENT_DATA) {
+        
+        // Tetapkan saiz canvas kepada saiz video
+        canvasOutput.width = videoElement.videoWidth;
+        canvasOutput.height = videoElement.videoHeight;
+        
+        // Lukis frame video ke canvas
+        context.drawImage(videoElement, 0, 0, videoElement.videoWidth, videoElement.videoHeight);
+        
+        // Tukar gambar canvas kepada Base64 Data URL (PNG)
+        const dataURL = canvasOutput.toDataURL('image/png');
+        
+        // Hantar gambar ke server
+        sendImageToServer(dataURL);
+    }
+}
+
+/**
+ * Menghantar gambar Base64 ke server untuk pengesanan ArUco.
+ */
+async function sendImageToServer(dataURL) {
+    if (!isScanning) return; 
+
+    try {
+        const response = await fetch('/api/aruco/scan', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ image: dataURL })
+        });
+
+        const result = await response.json();
+
+        if (result.success && result.arucoId) {
+            // Marker Ditemui!
+            const arucoId = result.arucoId;
+            
+            // 1. Hentikan kamera dan pemprosesan
+            stopArucoScan(); 
+            
+            // 2. Tutup modal kamera dan paparkan dialog loading
+            Swal.fire({
+                title: 'Processing...',
+                html: `ArUco ID ${arucoId} detected. Submitting review.`,
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+
+            // 🔥 TINDAKAN KRITIKAL: Gunakan setTimeout untuk melambatkan proses submit selama 3 saat (3000ms)
+            await new Promise(resolve => setTimeout(resolve, 3000)); 
+
+            // 3. Terus panggil fungsi submit (Approve status = 2)
+            await saveReviewStatus(currentLocationID, 2, arucoId, 'approved');
+
+        } else if (result.error) {
+            // Server gagal mencari marker atau menghadapi ralat.
+            console.warn("Server Scan Message:", result.error);
+        }
+    } catch (error) {
+        console.error("Network Error during scan or failed response:", error);
+    }
+}
+
+
+/**
+ * Menghentikan akses kamera dan pemprosesan.
+ */
+function stopArucoScan() {
+    isScanning = false; // Set flag kepada false
+    if (processingInterval) {
+        clearInterval(processingInterval);
+        processingInterval = null;
+    }
+    
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+        videoStream = null;
+    }
+    
+    // Pindah balik elemen video ke body dan sembunyi
+    if (videoElement && videoElement.parentElement) {
+        videoElement.style.display = 'none';
+        document.body.appendChild(videoElement);
+    }
+    console.log("ArUco scan stopped.");
+}
 
 /**
  * Memulakan akses kamera dan mula mengimbas.
  */
 function startArucoScan() {
     if (!videoElement || !canvasOutput) {
-        console.error("Scanner elements are not ready.");
-        Swal.showValidationMessage('Scanner initialization failed.');
+        Swal.fire("Error", 'Scanner initialization failed: DOM elements missing.', "error");
         return;
     }
-
+    
     // Minta akses kamera
     navigator.mediaDevices.getUserMedia({ video: true, audio: false })
         .then((stream) => {
@@ -194,157 +278,54 @@ function startArucoScan() {
             videoElement.play();
 
             videoElement.onloadedmetadata = () => {
-                videoElement.width = videoElement.videoWidth;
-                videoElement.height = videoElement.videoHeight;
-                canvasOutput.width = videoElement.videoWidth;
-                canvasOutput.height = videoElement.videoHeight;
-                
-                // Mula pemprosesan ArUco
-                initOpenCVProcessing();
+                isScanning = true;
+                // Mula interval untuk menangkap frame dan hantar ke server pada 5Hz (200ms)
+                processingInterval = setInterval(captureAndScanFrame, 200); 
             };
         })
         .catch((err) => {
             console.error("Error accessing camera: ", err);
-            Swal.showValidationMessage(`Gagal mengakses kamera: ${err.name}`);
+            Swal.fire({
+                title: 'Kamera Gagal',
+                text: `Gagal mengakses kamera: ${err.name}. Pastikan anda menggunakan HTTPS atau localhost dan beri kebenaran kamera.`,
+                icon: 'error'
+            });
         });
 }
 
 /**
- * Menghentikan akses kamera dan pemprosesan.
- */
-function stopArucoScan() {
-    if (processingInterval) {
-        clearInterval(processingInterval);
-        processingInterval = null;
-    }
-
-    if (videoStream) {
-        videoStream.getTracks().forEach(track => track.stop());
-        videoStream = null;
-    }
-    
-    // Release memori OpenCV (PENTING)
-    if (src) { src.delete(); src = null; }
-    if (dst) { dst.delete(); dst = null; }
-    if (dictionary) { dictionary.delete(); dictionary = null; }
-    if (detector) { detector.delete(); detector = null; }
-
-    console.log("ArUco scan stopped and resources released.");
-}
-
-/**
- * Menyediakan objek-objek OpenCV yang diperlukan.
- */
-function initOpenCVProcessing() {
-    // Pastikan OpenCV dimuatkan dan video mempunyai dimensi
-    if (!cv || !videoElement.videoWidth || !videoElement.videoHeight) {
-        setTimeout(initOpenCVProcessing, 100); // Cuba lagi
-        return;
-    }
-
-    // Initialize Mat objects for processing
-    src = new cv.Mat(videoElement.height, videoElement.width, cv.CV_8UC4);
-    dst = new cv.Mat();
-    
-    // Initialize ArUco detector
-    dictionary = cv.getPredefinedDictionary(ARUCO_DICT);
-    detector = new cv.ArucoDetector(dictionary);
-
-    // Mula interval pemprosesan (contoh: 30ms untuk ~30 FPS)
-    processingInterval = setInterval(processVideoFrame, 30);
-}
-
-/**
- * Pemprosesan bingkai video untuk mengesan ArUco Marker.
- */
-function processVideoFrame() {
-    if (!videoElement.videoWidth || !detector || !cv || !src) return;
-
-    // 1. Tangkap frame dari video
-    let context = canvasOutput.getContext('2d');
-    context.drawImage(videoElement, 0, 0, videoElement.videoWidth, videoElement.videoHeight);
-    
-    // 2. Salin data kanvas ke Mat OpenCV
-    let imageData = context.getImageData(0, 0, canvasOutput.width, canvasOutput.height);
-    src = cv.matFromImageData(imageData);
-
-    // 3. Tukar kepada skala kelabu
-    cv.cvtColor(src, dst, cv.COLOR_RGBA2GRAY, 0);
-
-    // 4. Deteksi ArUco Marker
-    const corners = new cv.MatVector();
-    const ids = new cv.Mat();
-
-    detector.detectMarkers(dst, corners, ids);
-
-    // 5. Semak jika marker ditemui
-    if (ids.rows > 0) {
-        // Hanya ambil ID marker pertama
-        const arucoId = ids.data32S[0]; 
-        console.log("ArUco Marker Detected:", arucoId);
-
-        // Hentikan imbasan
-        stopArucoScan();
-        
-        // Kemas kini input field
-        const inputField = document.getElementById('aruco-id-input');
-        if (inputField) inputField.value = arucoId;
-
-        // Tutup dialog SweetAlert dan teruskan pengesahan
-        Swal.close();
-        
-        // Tiru klik butang Sahkan (Confirm) untuk meneruskan dengan ID
-        // Ini adalah hacks, tetapi berkesan untuk mencetuskan `.then((inputResult) => {})`
-        const reviewBtn = document.querySelector('.swal2-confirm');
-        if (reviewBtn) {
-             reviewBtn.click();
-        }
-
-    }
-
-    corners.delete();
-    ids.delete();
-}
-
-/**
- * Fungsi yang dipanggil apabila ikon imbasan ditekan.
+ * Fungsi utama untuk mengendalikan proses imbasan.
  */
 function scanArucoMarker() {
-    const inputField = document.getElementById('aruco-id-input');
-    if (!inputField) return;
-
+    
     Swal.fire({
         title: 'Imbas ArUco Marker',
         html: `
-            <div id="scanner-container" style="width: 100%; height: 300px; background: #000; display: flex; justify-content: center; align-items: center; border-radius: 5px;">
-                <p style="color: white;">Kamera sedang memuatkan... (Pastikan OpenCV.js dimuatkan)</p>
+            <div id="scanner-container" style="width: 100%; background: #000; display: flex; justify-content: center; align-items: center; border-radius: 5px;">
+                <p style="color: white; font-size: 1.2rem;">Memuatkan Kamera...</p>
             </div>
-            <p>Sila letakkan marker di hadapan kamera.</p>
-            `,
-        showConfirmButton: false,
+            <p style="color:#fff">Sila letakkan marker di hadapan kamera.</p>
+        `,
+        width: '800px',
+        showConfirmButton: false, // TIDAK PERLU BUTANG CONFIRM MANUAL
         showCancelButton: true,
         cancelButtonText: 'Tutup',
         allowOutsideClick: false,
         didOpen: () => {
-            // Pindah elemen video/canvas ke dalam container SweetAlert
             const scannerContainer = document.getElementById('scanner-container');
-            videoElement.style.display = 'block';
-            videoElement.style.width = '100%';
-            videoElement.style.height = '100%';
-            videoElement.style.objectFit = 'contain'; 
-            scannerContainer.innerHTML = ''; 
-            scannerContainer.appendChild(videoElement);
             
+            // Pindah videoElement sebenar ke dalam container SweetAlert
+            if (videoElement && scannerContainer) {
+                 scannerContainer.innerHTML = '';
+                 scannerContainer.appendChild(videoElement);
+                 videoElement.style.display = 'block'; // Paparkan video
+            }
+
             startArucoScan();
         },
         willClose: () => {
             // Hentikan imbasan apabila dialog ditutup
             stopArucoScan();
-            // Pindah balik elemen video ke body dan sembunyikannya
-            if (videoElement) {
-                videoElement.style.display = 'none';
-                document.body.appendChild(videoElement); 
-            }
         }
     });
 }
@@ -365,51 +346,23 @@ function reviewLocation() {
         icon: 'question',
         showDenyButton: true,
         showCancelButton: true,
-        confirmButtonText: 'Approve',
+        confirmButtonText: 'Approve (Scan)',
         denyButtonText: 'Reject',
         cancelButtonText: 'Cancel',
         confirmButtonColor: '#0d6efd',
         denyButtonColor: '#dc3545',
     }).then((result) => {
         if (result.isConfirmed) {
-            handleApprove();
+            // Jika pengguna tekan 'Approve (Scan)', terus buka kamera
+            scanArucoMarker();
         } else if (result.isDenied) {
             handleReject();
         }
     });
 }
 
-function handleApprove() {
-    Swal.fire({
-        title: 'Enter Aruco ID',
-        html: `
-            <div style="display: flex; align-items: center; border: 1px solid #ccc; border-radius: 5px; padding: 5px;">
-                <input id="aruco-id-input" type="text" placeholder="Enter Aruco ID here..." class="swal2-input" style="flex-grow: 1; border: none; box-shadow: none; margin: 0; padding: 0;">
-                <i id="scan-icon" class="material-icons" style="cursor: pointer; font-size: 28px; margin-left: 10px; color: #6c757d;">qr_code_scanner</i>
-            </div>
-        `,
-        focusConfirm: false,
-        preConfirm: (arucoId) => {
-            // Fallback: jika preConfirm dipanggil tanpa nilai (e.g., secara manual), ambil dari input field
-            if (arucoId === undefined || arucoId === null) {
-                arucoId = document.getElementById('aruco-id-input').value;
-            }
-            if (!arucoId) {
-                Swal.showValidationMessage('You need to enter an ID!');
-                return false;
-            }
-            return arucoId;
-        },
-        didOpen: () => {
-            document.getElementById('scan-icon').addEventListener('click', scanArucoMarker);
-        }
-    }).then((inputResult) => {
-        if (inputResult.isConfirmed) {
-            // Panggil fungsi untuk menghantar Approval status ke server
-            saveReviewStatus(currentLocationID, 2, inputResult.value, 'approved'); // 2 = LocationStatusId untuk Approved
-        }
-    });
-}
+// FUNGSI handleApprove() TIDAK LAGI DIPERLUKAN DAN TELAH DIBUANG.
+// Logik Approve kini dikendalikan secara automatik dalam sendImageToServer.
 
 function handleReject() {
     // Panggil fungsi untuk menghantar Rejected status ke server
@@ -418,11 +371,7 @@ function handleReject() {
 
 
 /**
- * Menghantar status semakan lokasi ke API.
- * @param {number} locationId - ID Lokasi yang tidak disulitkan.
- * @param {number} statusId - ID Status (2: Approved, 3: Rejected).
- * @param {string | null} arucoId - ID Aruco jika diluluskan.
- * @param {string} action - 'approved' atau 'rejected' untuk log.
+ * Menghantar status semakan lokasi ke API dan mencatat log.
  */
 async function saveReviewStatus(locationId, statusId, arucoId, action) {
     if (!currentUserID || !currentUserName) {
@@ -431,6 +380,16 @@ async function saveReviewStatus(locationId, statusId, arucoId, action) {
     }
     
     try {
+        // Jika belum ada loading, paparkan loading
+        if (!Swal.isVisible()) {
+             Swal.fire({
+                title: 'Processing...',
+                html: 'Submitting review status. Please wait.',
+                allowOutsideClick: false,
+                didOpen: () => Swal.showLoading()
+            });
+        }
+        
         // 1. Panggil API untuk kemas kini status Lokasi
         const reviewResponse = await fetch('/api/location/review', {
             method: 'POST',
@@ -464,16 +423,19 @@ async function saveReviewStatus(locationId, statusId, arucoId, action) {
         
         // 3. Tunjukkan mesej kejayaan
         Swal.fire(
-            `${action.charAt(0).toUpperCase() + action.slice(1)}!`, // 'Approved' atau 'Rejected'
+            `${action.charAt(0).toUpperCase() + action.slice(1)}!`, 
             `Enrollment has been successfully ${action}.`,
             'success'
-        ).then(() => {
-            // Redirect kembali ke halaman senarai (Enrollment)
-            window.location.href = '../../../administration/enrollment/';
+        ).then((result) => {
+            // 🔥 TINDAKAN KRITIKAL: Reload page HANYA selepas pengguna menekan butang OK
+            if (result.isConfirmed) {
+                // window.location.reload(); 
+                window.location.href = "../"
+            }
         });
 
     } catch (error) {
         console.error(`API Error on ${action}:`, error);
         Swal.fire("Error", `Failed to complete review process: ${error.message}`, "error");
     }
-}
+}       

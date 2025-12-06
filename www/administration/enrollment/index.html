@@ -1,147 +1,345 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Page Under Development</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap" rel="stylesheet">
-    
-    <style>
-        /* 1. Global Setup */
-        body {
-            background-color: #08356D; /* Deep Teal/Navy Blue */
-            color: #ffffff;
-            font-family: 'Poppins', sans-serif;
-            margin: 0;
-            /* Center content perfectly */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            text-align: center;
-            overflow: hidden;
-        }
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/png" href="../../assets/img/drone-icon.png">
+    <title>SkyIntel - Drone Fleet Monitoring</title>
 
-        /* 2. Main Content Container (Glassmorphism Effect) */
-        .container {
-            background: rgba(255, 255, 255, 0.05); 
-            border-radius: 20px;
-            padding: 60px 40px;
-            box-shadow: 0 8px 32px 0 rgba(8, 53, 109, 0.5); 
-            backdrop-filter: blur(4px); 
-            -webkit-backdrop-filter: blur(4px);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            max-width: 90%;
-            width: 500px;
-            opacity: 0;
-            transform: translateY(20px);
-            animation: fadeIn 1.5s forwards;
-        }
+    <!-- Fonts and icons -->
+    <link rel="stylesheet" type="text/css"
+        href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900|Roboto+Slab:400,700" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.5.0/font/bootstrap-icons.min.css"
+        rel="stylesheet">
 
-        /* 3. Typography Styling */
-        h2 {
-            font-size: 1.5em;
-            font-weight: 300;
-            margin-bottom: 5px;
-            color: #F7A82C; /* ACCENT COLOR */
-        }
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
-        h1 {
-            font-size: 3em;
-            font-weight: 600;
-            /* Gradient Text using ACCENT COLOR */
-            background: linear-gradient(90deg, #F7A82C, #FFC77D); 
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5em;
-        }
+    <!-- CSS Files -->
+    <link id="pagestyle" href="../../assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
+    <link id="pagestyle" href="../../assets/css/style.css" rel="stylesheet" />
 
-        p {
-            font-size: 1.2em;
-            font-weight: 300;
-            line-height: 1.6;
-            margin-bottom: 30px;
-            color: #c4c4c4;
-        }
-
-        /* 4. Button Container */
-        .button-group {
-            display: flex;
-            justify-content: center;
-            gap: 15px; 
-            margin-top: 30px;
-        }
-
-        /* 5. Primary CTA Button (Go to Homepage) */
-        .cta-button {
-            display: inline-block;
-            padding: 12px 25px;
-            background-color: #F7A82C; /* ACCENT COLOR */
-            color: #08356D; /* PRIMARY COLOR for contrast */
-            text-decoration: none;
-            border-radius: 50px;
-            font-weight: 600;
-            transition: background-color 0.3s ease, transform 0.3s ease;
-            box-shadow: 0 4px 15px rgba(247, 168, 44, 0.4); 
-            border: none;
-            cursor: pointer;
-            font-size: 1em;
-        }
-
-        .cta-button:hover {
-            background-color: #e59a27; 
-            transform: translateY(-2px);
-        }
-        
-        /* 6. Contact Link (Subtle Style) */
-        .contact-link {
-            display: inline-block;
-            padding: 12px 25px;
-            background: none; 
-            color: #F7A82C; /* Text uses ACCENT COLOR */
-            text-decoration: none;
-            border: 1px solid #F7A82C; /* Border uses ACCENT COLOR */
-            border-radius: 50px;
-            font-weight: 600;
-            transition: background-color 0.3s ease, color 0.3s ease;
-            cursor: pointer;
-            font-size: 1em;
-        }
-
-        .contact-link:hover {
-            background-color: #F7A82C; 
-            color: #08356D; /* Text changes to PRIMARY COLOR on hover */
-            transform: translateY(-2px);
-        }
-
-        /* 7. Fade-in Animation */
-        @keyframes fadeIn {
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-    </style>
 </head>
-<body>
 
-    <div class="container">
-        <h2 style="color: #F7A82C;">🚧 Status Update 🚧</h2>
-        
-        <h1>This page is under development</h1>
-        
-        <p>We are currently updating this specific section to bring you new features and a better experience. Thank you for your patience!</p>
-        
-        <div class="button-group">
-            
-            <a href="/" class="cta-button">
-                &larr; Go to Main Site
-            </a>
+<body class="g-sidenav-show bg-gray-200">
 
+    <!-- Navigation Header -->
+    <header class="navbar">
+        <div class="navbar-inner">
+            <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <i class="material-icons">person</i>
+                <span id="username"></span>
+            </button>
+            <ul id="login-card" class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login"
+                aria-labelledby="dropdownMenuButton">
+                <div id="profileLogin" class="card card-plain">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Sign In</h4>
+                        <p class="mb-0">Enter your email and password to sign in</p>
+                    </div>
+                    <div class="card-body mt-2">
+                        <form id="loginForm1" role="form" method="post" action="javascript:void(0)">
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="email1" name="email" class="form-control" required>
+                            </div>
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="password1" name="password" class="form-control" required>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center mb-3">
+                                <a href="#" class="forgot-password">Forgot Password ?</a>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
+                                    in</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div id="profileContent" class="card card-plain">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Profile</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>USERNAME</label>
+                                    <p id="usernameTxt"></p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>EMAIL</label>
+                                    <p id="emailTxt"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button class="btn btn-logout w-100">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </ul>
+            <!-- Toggle button on right -->
+            <button id="open-sidenav-button" class="open-sidenav-button">
+                <i class="material-icons">menu</i>
+            </button>
+
+            <!-- Logo in center -->
+            <img src="../../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
         </div>
+    </header>
 
-    </div>
 
+    <!-- Map container -->
+    <!-- <div id="map"></div> -->
+
+    <main class="main-content position-relative justify-items-center max-height-vh-100 h-100 border-radius-lg">
+        <!-- Main content goes here -->
+        <div class="content-header">
+            <h2>Location List</h2>
+            <div class="mini-searchBar">
+                <input id="searchQueryInput" type="text" name="searchQueryInput" placeholder="Search" />
+                <button id="searchQuerySubmit" type="submit" name="searchQuerySubmit">
+                    <svg style="width:24px;height:24px" viewBox="0 0 24 24">
+                        <path fill="#666666"
+                            d="M9.5,3A6.5,6.5 0 0,1 16,9.5C16,11.11 15.41,12.59 14.44,13.73L14.71,14H15.5L20.5,19L19,20.5L14,15.5V14.71L13.73,14.44C12.59,15.41 11.11,16 9.5,16A6.5,6.5 0 0,1 3,9.5A6.5,6.5 0 0,1 9.5,3M9.5,5C7,5 5,7 5,9.5C5,12 7,14 9.5,14C12,14 14,12 14,9.5C14,7 12,5 9.5,5Z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="content-body">
+            <div class="row mt-4">
+                <div class="col-md-4 col-sm-12 col-12">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h1><span id="status-pending" countto="1">0</span></h1>
+                            <h6 class="mb-0 font-weight-bolder">Pending</h6>
+                            <p class="opacity-8 mb-0 text-sm">Enrollment</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12 col-12 mt-4 mt-md-0">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h1><span id="status-approved" countto="1">0</span></h1>
+                            <h6 class="mb-0 font-weight-bolder">Approved</h6>
+                            <p class="opacity-8 mb-0 text-sm">Enrollment</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 col-sm-12 col-12 mt-4 mt-md-0">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h1><span id="status-rejected" countto="1">0</span></h1>
+                            <h6 class="mb-0 font-weight-bolder">Rejected</h6>
+                            <p class="opacity-8 mb-0 text-sm">Enrollment</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card p-3">
+                        <div class="table-responsive">
+                            <table class="table table-flush" id="datatable-basic">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th
+                                            class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2">
+                                            No</th>
+                                        <th class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2"
+                                            style="width: 500px;">
+                                            Location Address</th>
+                                        <th
+                                            class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2">
+                                            User</th>
+                                        <th
+                                            class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2">
+                                            Email</th>
+                                        <th
+                                            class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2">
+                                            Status</th>
+                                        <th
+                                            class="text-uppercase text-secondary text-xs font-weight-bolder opacity-7 px-2">
+                                            Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="location-table-body"></tbody>
+                            </table>
+                        </div>
+                        <div
+                            class="card-footer py-2 border-0 d-flex flex-column flex-lg-row align-items-center justify-content-between">
+                            <div class="d-flex align-items-center">
+                                <span class="text-sm me-3" id="page-info">Showing 0 to 0 of 0 entries</span>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <button class="btn btn-sm btn-outline-secondary mb-0" id="btn-prev"
+                                    disabled>Previous</button>
+                                <button class="btn btn-sm bg-gradient-warning mb-0" id="btn-next" disabled>Next</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Right Sidenav -->
+    <aside id="right-sidenav" class="right-sidenav">
+        <div class="sidenav-body">
+            <button id="close-sidenav-button" class="close-btn">&times;</button>
+            <div class="card card-plain hidden">
+                <div class="card-header text-center">
+                    <h4 class="font-weight-bolder">You're not a member of SkyIntel</h4>
+                    <p class="mb-0">Please sign in as member</p>
+                </div>
+                <div class="card-body mt-2">
+                    <form role="form">
+                        <div class="input-group input-group-outline mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control">
+                        </div>
+                        <div class="input-group input-group-outline mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" class="form-control">
+                        </div>
+                        <div class="text-center">
+                            <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
+                                in</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link" href="/">
+                        <i class="material-icons-round opacity-10">navigation</i>
+                        <span class="nav-link-text ms-2 ps-1">Live Tracker</span>
+                    </a>
+                </li>
+                <li class="nav-item ">
+                    <a class="nav-link" href="../../personel/">
+                        <i class="material-icons-round opacity-10">person</i>
+                        <span class="nav-link-text ms-2 ps-1">Personel</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="../../library/">
+                        <i class="material-icons-round opacity-10">library_books</i>
+                        <span class="nav-link-text ms-2 ps-1">Library</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a data-bs-toggle="collapse" href="#droneDropdown" class="nav-link " aria-controls="droneDropdown"
+                        role="button" aria-expanded="false">
+                        <i class="material-icons-round opacity-10">flight</i>
+                        <span class="nav-link-text ms-2 ps-1">Drone</span>
+                        <i class="material-icons-round dropdown-icon transition" id="droneDropdownIcon"
+                            style="margin-left: 218px;">expand_more</i>
+                    </a>
+                    <div class="collapse " id="droneDropdown">
+                        <ul class="nav d-flex flex-column mt-1 gap-1">
+                            <li class="nav-item ">
+                                <a class="nav-link" href="../../drone/">
+                                    <span class="sidenav-mini-icon"> L </span>
+                                    <span class="sidenav-normal  ms-2  ps-1"> List </span>
+                                </a>
+                            </li>
+                            <li class="nav-item ">
+                                <a class="nav-link" href="../../drone/flight-log/">
+                                    <span class="sidenav-mini-icon"> F </span>
+                                    <span class="sidenav-normal  ms-2  ps-1"> Flight Log </span>
+                                </a>
+                            </li>
+                            <li class="nav-item ">
+                                <a class="nav-link" href="../../drone/maintenance-log/">
+                                    <span class="sidenav-mini-icon"> M </span>
+                                    <span class="sidenav-normal  ms-2  ps-1"> Maintenance Log </span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a data-bs-toggle="collapse" href="#adminDropdown" class="nav-link active" aria-controls="adminDropdown"
+                        role="button" aria-expanded="false">
+                        <i class="material-icons-round opacity-10">admin_panel_settings</i>
+                        <span class="nav-link-text ms-2 ps-1">Administration</span>
+                        <i class="material-icons-round dropdown-icon transition" id="adminDropdownIcon"
+                            style="margin-left: 156px;">expand_more</i>
+                    </a>
+                    <div class="collapse" id="adminDropdown">
+                        <ul class="nav d-flex flex-column mt-1 gap-1">
+                            <li class="nav-item ">
+                                <a class="nav-link sub-active" href="../../administration/enrollment/">
+                                    <span class="sidenav-mini-icon"> E </span>
+                                    <span class="sidenav-normal  ms-2  ps-1"> Enrollment </span>
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <script>
+        const video = document.getElementById('video');
+        const videoSrc = 'https://gcs.zulsyah.com/drone_camera/0';
+
+        if (Hls.isSupported()) {
+            const hls = new Hls();
+            hls.loadSource(videoSrc);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function () {
+                video.play();
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = videoSrc;
+            video.addEventListener('loadedmetadata', function () {
+                video.play();
+            });
+        } else {
+            console.error('HLS not supported');
+        }
+
+        function toggleSidenav() {
+            document.getElementById('right-sidenav').classList.add("collapsed");
+        }
+
+    </script>
+
+    <!-- Core JS Files -->
+    <script src="../../assets/js/core/popper.min.js"></script>
+    <script src="../../assets/js/core/bootstrap.min.js"></script>
+    <script src="../../assets/js/plugins/perfect-scrollbar.min.js"></script>
+    <script src="../../assets/js/plugins/smooth-scrollbar.min.js"></script>
+    <script src="../../assets/js/plugins/jquery.min.js"></script>
+
+    <!-- Kanban scripts -->
+    <script src="../../assets/js/plugins/dragula/dragula.min.js"></script>
+    <script src="../../assets/js/plugins/jkanban/jkanban.js"></script>
+    <script src="../../assets/js/plugins/chartjs.min.js"></script>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+    <!-- Control Center for Material Dashboard -->
+    <script src="../../assets/js/material-dashboard.js?v=3.0.6"></script>
+    <script src="../../assets/js/leaflet.rotatedMarker.js"></script>
+    <script src="../../assets/js/login.js"></script>
+    <script src="index.js"></script>
 </body>
+
 </html>

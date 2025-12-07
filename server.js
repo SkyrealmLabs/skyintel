@@ -254,10 +254,75 @@ app.post('/api/login', async (req, res) => {
   }
 });
 
+// API: SkyLanderLogin
+app.post('/api/skylander/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    // Find the user in the database
+    const user = await new Promise((resolve, reject) => {
+      db.query('SELECT * FROM user WHERE email = ?', [email], (err, result) => {
+        if (err) return reject(err);
+        resolve(result.length > 0 ? result[0] : null);
+      });
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // Compare the password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    // ✅ Update isLogin to 1 and increment login_count
+    await new Promise((resolve, reject) => {
+      db.query(
+        'UPDATE user SET isLogin = 1, login_count = login_count + 1 WHERE id = ?',
+        [user.id],
+        (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        }
+      );
+    });
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user.id, role: user.user_role_id },
+      JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    res.status(200).json({
+      message: "Login successful",
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phoneno: user.phoneno,
+        role: user.user_role_id,
+        isLogin: 1,
+        login_count: user.login_count + 1, // incremented value
+      }
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error logging in" });
+  }
+});
+
 // Logout API
 app.put("/api/logout", (req, res) => {
   const { id } = req.body;
-  console.log("🚀 ~ id:", id)
 
   if (!id) {
     return res.status(400).json({ message: "User ID is required" });

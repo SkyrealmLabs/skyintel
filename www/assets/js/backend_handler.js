@@ -772,42 +772,57 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // FIX 3: Update CSS and size to ensure video appears floating
     function requestDroneVideoStream(droneId, droneVideoFeedContainer) {
-        if (document.getElementById(`drone-stream-container-${droneId}`)) return;
-
-        const streamContainer = document.createElement('div');
-        streamContainer.id = `drone-stream-container-${droneId}`;
+        if (droneVideoFeedContainer.querySelector('img')) {
+            // If an image (stream) already exists, remove it before adding the new one.
+            droneVideoFeedContainer.innerHTML = '';
+        }
 
         const videoStreamId = (droneId === 1000) ? 0 : droneId;
+        const streamUrl = `https://gcs.zulsyah.com/drone_camera/${videoStreamId}`;
 
+        // 1. Create a container for the image and control elements (optional but good for structure)
+        const streamContainer = document.createElement('div');
+        streamContainer.id = `drone-stream-container-${droneId}`;
         Object.assign(streamContainer.style, {
             position: 'relative',
             display: 'block',
-            width: '420px',       // Fixed width for floating video
-            height: '240px',      // Forced height to prevent "line" bug
+            width: '420px',
+            height: '240px',
             marginTop: '0px',
             border: '2px solid #ccc',
             borderRadius: '8px',
             overflow: 'hidden',
-            backgroundColor: '#000', // Black bg so box is visible
+            backgroundColor: '#000',
             zIndex: '10000'
         });
 
+        // 2. Use a simple <img> tag to handle the MJPEG stream
         const mjpegImg = document.createElement('img');
         mjpegImg.id = `drone-stream-${droneId}`;
+        mjpegImg.src = streamUrl; // Set the source directly to the MJPEG API
+        mjpegImg.alt = `Live stream from Drone ${droneId}`;
 
-        // Use the remapped ID for the source
-        mjpegImg.src = `https://gcs.zulsyah.com/drone_camera/${videoStreamId}`;
+        // Add an onerror handler just like in the provided HTML for robustness
+        mjpegImg.onerror = function () {
+            this.onerror = null;
+            // Optional: You can set a placeholder image here if available, 
+            // or simply remove the stream to stop continuous attempts.
+            // For now, let's just log a message.
+            console.error(`Failed to load stream for Drone ${droneId}`);
+            // Remove the container if the stream fails
+            streamContainer.remove();
+        };
 
-        Object.assign(mjpegImg, {
+        // Ensure the image fills the container
+        Object.assign(mjpegImg.style, {
             width: '100%',
             height: '100%',
-            objectFit: 'cover', // Ensures video fills the 240px height
-            alt: `Live stream from Drone ${droneId}`
+            objectFit: 'cover',
+            display: 'block'
         });
-        mjpegImg.style.display = 'block';
 
+        // 3. Create overlay text and close button (retaining the useful UI controls)
         const overlayText = document.createElement('div');
-        // Keep the original droneId for the label (so it matches the UI list)
         overlayText.textContent = `🔴 Live stream from Drone ${droneId}`;
         Object.assign(overlayText.style, { position: 'absolute', top: '8px', left: '8px', backgroundColor: 'rgba(0, 0, 0, 0.6)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '14px', fontWeight: 'bold' });
 
@@ -818,7 +833,18 @@ document.addEventListener("DOMContentLoaded", function () {
         closeBtn.onclick = () => {
             streamContainer.remove();
             console.log(`Stream for Drone ${droneId} removed!`);
+            // You should still call the disconnect API when the user closes the stream
+            const disconnectStreamAPIUrl = `https://gcs.zulsyah.com/disconnect_drone_camera/${videoStreamId}`;
+            fetch(disconnectStreamAPIUrl)
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                    console.log(`Successfully disconnect stream from the Drone ${droneId}`);
+                })
+                .catch(error => {
+                    console.error(`Failed to disconnect drone camera for Drone ${droneId}:`, error);
+                });
         };
+
         streamContainer.append(mjpegImg, overlayText, closeBtn);
         droneVideoFeedContainer.appendChild(streamContainer);
     }

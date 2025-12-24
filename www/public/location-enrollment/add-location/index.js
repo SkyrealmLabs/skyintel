@@ -5,17 +5,19 @@ let currentMarker = null;
 let mediaRecorder;
 let recordedChunks = [];
 let mediaStream;
-let finalVideoBlob = null; 
-let recordingTimer; 
+let finalVideoBlob = null;
+let recordingTimer;
 
 // Tracks the current camera direction: 'environment' (back) or 'user' (front)
-let currentFacingMode = 'environment'; 
+let currentFacingMode = 'environment';
+// const user = JSON.parse(localStorage.getItem("user")) || null;
 
 
 document.addEventListener('DOMContentLoaded', () => {
     // --- SIDE NAVIGATION LOGIC ---
     const openSideNav = document.getElementById("open-sidenav-button");
     const closeSideNav = document.getElementById("close-sidenav-button");
+    const submitButton = document.getElementById('submit-location-button');
 
     openSideNav.addEventListener("click", function () {
         openSidenav();
@@ -34,30 +36,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     initializeMap();
-    
-    // --- DROPDOWN ROTATION LOGIC ---
-    const droneToggleLink = document.querySelector('[data-bs-toggle="collapse"][href="#droneDropdown"]');
-    const adminToggleLink = document.querySelector('[data-bs-toggle="collapse"][href="#adminDropdown"]');
-    const droneDropdownIcon = droneToggleLink.querySelector('#droneDropdownIcon');
-    const droneListTarget = document.querySelector('#droneDropdown');
-    const adminDropdownIcon = adminToggleLink.querySelector('#adminDropdownIcon');
-    const adminListTarget = document.querySelector('#adminDropdown');
-
-    droneListTarget.addEventListener('show.bs.collapse', () => {
-        droneDropdownIcon.classList.add('rotate-180');
-    });
-
-    droneListTarget.addEventListener('hide.bs.collapse', () => {
-        droneDropdownIcon.classList.remove('rotate-180');
-    });
-
-    adminListTarget.addEventListener('show.bs.collapse', () => {
-        adminDropdownIcon.classList.add('rotate-180');
-    });
-
-    adminListTarget.addEventListener('hide.bs.collapse', () => {
-        adminDropdownIcon.classList.remove('rotate-180');
-    });
 
     // --- VIDEO RECORDING EVENT LISTENERS (FULL SCREEN MODAL) ---
     const startRecordButton = document.getElementById('start-record-button-fs');
@@ -69,12 +47,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (startRecordButton && stopRecordButton && recordModal) {
         startRecordButton.addEventListener('click', startRecording);
         stopRecordButton.addEventListener('click', stopRecording);
-        
+
         if (switchCameraButton) {
             switchCameraButton.addEventListener('click', toggleCamera);
         }
     }
-    
+
     // Auto-start camera when the modal is shown
     recordModal.addEventListener('shown.bs.modal', function () {
         initializeCameraStream();
@@ -92,9 +70,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (stopRecordButton) stopRecordButton.disabled = true;
         if (closeRecordModalButton) closeRecordModalButton.disabled = true;
         currentFacingMode = 'environment'; // Reset to default back camera
-        
+
         clearInterval(recordingTimer);
     });
+
+    if (submitButton) {
+        submitButton.addEventListener('click', (e) => {
+            e.preventDefault();
+            uploadLocationData();
+        });
+    }
 });
 
 
@@ -114,20 +99,20 @@ function initializeMap() {
 function setupLocationAutomation() {
     const mapContainer = document.getElementById('locationMap');
 
-    const defaultLatLng = { lat: 3.0375, lng: 101.7513 }; 
-    
+    const defaultLatLng = { lat: 3.0375, lng: 101.7513 };
+
     map = new google.maps.Map(mapContainer, {
         center: defaultLatLng,
         zoom: 12,
     });
-    
+
     if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
             (position) => {
                 const lat = position.coords.latitude;
                 const lng = position.coords.longitude;
                 const latLng = { lat: lat, lng: lng };
-                
+
                 updateLocation(latLng, map);
                 map.setZoom(16);
                 map.panTo(latLng);
@@ -137,8 +122,8 @@ function setupLocationAutomation() {
                 console.error("Geolocation Error (using default location):", error.message);
             }
         );
-    } 
-    
+    }
+
     map.addListener("click", (mapsMouseEvent) => {
         const clickedLatLng = mapsMouseEvent.latLng.toJSON();
         updateLocation(clickedLatLng, map);
@@ -148,7 +133,7 @@ function setupLocationAutomation() {
 function updateLocation(latLng, map) {
     const addressInput = document.getElementById('locationAddressInput');
     const coordinatesInput = document.getElementById('locationCoordinatesInput');
-    
+
     // Get parent groups for updating the label state (Autofill Fix)
     const addressGroup = addressInput ? addressInput.closest('.input-group-outline') : null;
     const coordinatesGroup = coordinatesInput ? coordinatesInput.closest('.input-group-outline') : null;
@@ -156,7 +141,7 @@ function updateLocation(latLng, map) {
     if (currentMarker) {
         currentMarker.setMap(null);
     }
-    
+
     currentMarker = new google.maps.Marker({
         position: latLng,
         map: map,
@@ -168,7 +153,7 @@ function updateLocation(latLng, map) {
     if (coordinatesGroup) {
         coordinatesGroup.classList.add('is-filled'); // Fixes Material Dashboard autofill overlay
     }
-    
+
     // 2. Reverse Geocode Address
     reverseGeocode(latLng, addressInput)
         // Ensure the address autofill state is updated after the promise resolves
@@ -178,14 +163,14 @@ function updateLocation(latLng, map) {
             }
         })
         .catch(() => {
-             // Handle any geocode error visually if needed
-             if (addressGroup) addressGroup.classList.add('is-filled');
+            // Handle any geocode error visually if needed
+            if (addressGroup) addressGroup.classList.add('is-filled');
         });
 }
 
 function reverseGeocode(latLng, addressInput) {
     const geocoder = new google.maps.Geocoder();
-    
+
     // Return the promise to allow chaining in updateLocation
     return geocoder.geocode({ 'location': latLng })
         .then((response) => {
@@ -201,7 +186,7 @@ function reverseGeocode(latLng, addressInput) {
             addressInput.value = "Geocoding failed";
             console.error('Geocoder failed due to: ' + e);
             // Propagate the error to the .catch in updateLocation
-            throw e; 
+            throw e;
         });
 }
 
@@ -252,13 +237,13 @@ async function initializeCameraStream() {
         const constraints = {
             video: {
                 facingMode: currentFacingMode // Use the tracked state ('user' or 'environment')
-            }, 
+            },
             audio: true
         };
 
         mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
         videoElement.srcObject = mediaStream;
-        
+
         // Enable buttons once stream is established
         closeRecordModalButton.disabled = false;
         if (switchCameraButton) switchCameraButton.disabled = false;
@@ -266,7 +251,7 @@ async function initializeCameraStream() {
     } catch (err) {
         console.error("Error accessing media devices with facingMode:", currentFacingMode, err);
         alert("Could not access camera/microphone. Device may lack " + currentFacingMode + " camera.");
-        
+
         // Ensure modal can still be closed if camera fails
         closeRecordModalButton.disabled = false;
         if (switchCameraButton) switchCameraButton.disabled = false;
@@ -278,19 +263,19 @@ function startRecording() {
     const startButton = document.getElementById('start-record-button-fs');
     const stopButton = document.getElementById('stop-record-button-fs');
     const closeRecordModalButton = document.getElementById('close-record-modal-button');
-    
+
     if (!mediaStream) {
         alert("Camera stream not active. Please wait or check permissions.");
         return;
     }
-    
+
     startButton.disabled = true;
     stopButton.disabled = false;
     closeRecordModalButton.disabled = true; // Cannot close while recording
-    
+
     recordedChunks = [];
-    
-    const options = { mimeType: 'video/webm; codecs=vp9' }; 
+
+    const options = { mimeType: 'video/webm; codecs=vp9' };
     mediaRecorder = new MediaRecorder(mediaStream, options);
 
     mediaRecorder.ondataavailable = (event) => {
@@ -301,7 +286,7 @@ function startRecording() {
 
     mediaRecorder.onstop = () => {
         finalVideoBlob = new Blob(recordedChunks, { type: 'video/webm' });
-        
+
         // Process data and close the modal immediately upon stop
         saveVideoDataAndClose();
     };
@@ -324,17 +309,17 @@ function saveVideoDataAndClose() {
     const finalVideoPreview = document.getElementById('final-video-preview');
     const videoStatus = document.getElementById('video-status');
     const recordModalElement = document.getElementById('recordVideoModal');
-    
+
     // Hide the recording stream area
     const videoStreamFullscreen = document.getElementById('video-stream-fullscreen');
     if (videoStreamFullscreen) videoStreamFullscreen.style.display = 'none';
 
     if (finalVideoBlob) {
         blobToBase64(finalVideoBlob).then(base64Data => {
-            
+
             // 2. Update Hidden Form Data
             videoDataInput.value = base64Data;
-            
+
             // 3. Update Final Preview (in the main page)
             const videoURL = URL.createObjectURL(finalVideoBlob);
             finalVideoPreview.src = videoURL;
@@ -358,4 +343,64 @@ function saveVideoDataAndClose() {
     // 5. Hide the full-screen recording modal
     const recordModal = bootstrap.Modal.getInstance(recordModalElement) || new bootstrap.Modal(recordModalElement);
     recordModal.hide();
+}
+
+async function uploadLocationData() {
+    const addressInput = document.getElementById('locationAddressInput');
+    const coordinatesInput = document.getElementById('locationCoordinatesInput');
+    const videoStatus = document.getElementById('video-status');
+
+    if (!finalVideoBlob || !addressInput.value || !coordinatesInput.value) {
+        alert("Please ensure location is selected and video is recorded.");
+        return;
+    }
+
+    const uniqueFileName = `video_${Date.now()}.mp4`;
+
+    // Prepare coordinates for the API (expects an object with latitude/longitude)
+    const [lat, lng] = coordinatesInput.value.split(',').map(coord => coord.trim());
+    const coordinateObj = {
+        latitude: lat,
+        longitude: lng
+    };
+
+    // Create FormData object
+    const formData = new FormData();
+    formData.append('userID', user.id); // Replace with actual logged-in user ID
+    formData.append('address', addressInput.value);
+    formData.append('coordinate', JSON.stringify(coordinateObj));
+
+    // Append the video blob as a file named 'media' (matches upload.single('media'))
+    formData.append('media', finalVideoBlob, uniqueFileName);
+
+    videoStatus.textContent = "Uploading location data...";
+
+    console.log(Array.from(formData.entries()));
+
+    try {
+        const response = await fetch('/api/location/add', {
+            method: 'POST',
+            body: formData // Note: Do NOT set Content-Type header; browser does it for FormData
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // 1. Update UI Status
+            videoStatus.textContent = "Location and video uploaded successfully!";
+            videoStatus.className = "text-success";
+
+            // 2. Give Alert to user
+            alert("Success: Location and video have been saved.");
+
+            // 3. Redirect to previous page
+            window.location.href = '../';
+        } else {
+            throw new Error(result.message || "Upload failed");
+        }
+    } catch (error) {
+        console.error("Upload Error:", error);
+        videoStatus.textContent = "Error: " + error.message;
+        videoStatus.className = "text-danger";
+    }
 }

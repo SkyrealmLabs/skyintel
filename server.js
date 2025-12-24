@@ -105,28 +105,31 @@ const storage = multer.diskStorage({
 });
 
 // Initialize multer with file filter for videos
+// Initialize multer with file filter for videos
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
-    // Define allowed MIME types
+    // Define allowed MIME types - ADD video/webm HERE
     const allowedMimeTypes = [
       "video/mp4",
-      "video/quicktime", // For .mov files
-      "video/x-msvideo", // For .avi files
-      "video/x-ms-wmv", // For .wmv files
-      "video/x-matroska", // For .mkv files
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-ms-wmv",
+      "video/x-matroska",
+      "video/webm", // <--- CRITICAL: Allow webm from browser
     ];
-    const fileTypes = /mp4|mov|avi|wmv|mkv|quicktime/; // Allowed file extensions
+    
+    // Add webm to the extension regex
+    const fileTypes = /mp4|mov|avi|wmv|mkv|quicktime|webm/; 
 
-    // Check if MIME type is valid
     const mimetype = allowedMimeTypes.includes(file.mimetype);
-    // Check if file extension is valid
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
 
     if (mimetype && extname) {
       cb(null, true);
     } else {
-      cb(new Error("Only video files are allowed!"), false);
+      // Use a custom error message so you know why it failed
+      cb(new Error(`File type ${file.mimetype} is not allowed!`), false);
     }
   },
 });
@@ -785,41 +788,43 @@ app.delete("/api/user/delete", (req, res) => {
 });
 
 // Add Location API
-app.post('/api/location/add', upload.single('media'), (req, res, next) => {
-  const { userID, address, coordinate } = req.body;
-  // Check if all required fields are provided
-  if (!address || !coordinate || !req.file) {
-    return res.status(400).json({ message: "All fields are required" });
-  }
+app.post('/api/location/add', upload.single('media'), (req, res) => {
+  try {
+    const { userID, address, coordinate } = req.body;
 
-  // Parse coordinate and round to 6 decimal places
-  const parsedCoordinate = JSON.parse(coordinate);
-  parsedCoordinate.latitude = parseFloat(parsedCoordinate.latitude).toFixed(6);
-  parsedCoordinate.longitude = parseFloat(parsedCoordinate.longitude).toFixed(6);
+    // 1. Safety check for file
+    if (!req.file) {
+      return res.status(400).json({ message: "No video file provided or file type not allowed." });
+    }
 
-  // Get the current timestamp
-  const timestamp = getCurrentTimestamp();
+    // 2. Safety check for coordinate parsing
+    let parsedCoordinate;
+    try {
+        parsedCoordinate = typeof coordinate === 'string' ? JSON.parse(coordinate) : coordinate;
+    } catch (e) {
+        return res.status(400).json({ message: "Invalid coordinate format" });
+    }
 
-  // Get media file name
-  const mediaFileName = path.basename(req.file.path);
+    const lat = parseFloat(parsedCoordinate.latitude).toFixed(6);
+    const lng = parseFloat(parsedCoordinate.longitude).toFixed(6);
+    const timestamp = getCurrentTimestamp();
+    const mediaFileName = path.basename(req.file.path);
 
-  // Add the new location to the database
-  db.query("INSERT INTO location (userid, locationStatusId, locationAddress, aruco_id, latitude, longitude, mediaPath, mediaFileName, isDeleted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-    [userID, 1, address, null, parsedCoordinate.latitude, parsedCoordinate.longitude, req.file.path, mediaFileName, false, timestamp, timestamp], (err, result) => {
-      if (err) {
-        return res.status(500).json({ message: "Database error" });
+    db.query(
+      "INSERT INTO location (userid, locationStatusId, locationAddress, aruco_id, latitude, longitude, mediaPath, mediaFileName, isDeleted, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+      [userID, 1, address, null, lat, lng, req.file.path, mediaFileName, false, timestamp, timestamp], 
+      (err, result) => {
+        if (err) {
+          console.error("DB Error:", err);
+          return res.status(500).json({ message: "Database error" });
+        }
+        res.status(201).json({ message: "Location added successfully" });
       }
-
-      // Send response once the database operation is successful
-      return res.status(201).json({
-        message: "Location added successfully",
-        address,
-        coordinate: parsedCoordinate,
-        mediaPath: req.file.path
-      });
-    });
-
-  // Don't send another response here.
+    );
+  } catch (error) {
+    console.error("Server Error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 // Get Location API

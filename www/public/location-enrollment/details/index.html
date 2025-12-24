@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/png" href="../../../assets/img/drone-icon.png">
+    <title>SkyIntel - Drone Fleet Monitoring</title>
+
+    <link rel="stylesheet" type="text/css"
+        href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900|Roboto+Slab:400,700" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <link id="pagestyle" href="../../../assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
+    <link id="pagestyle" href="../../../assets/css/style.css" rel="stylesheet" />
+</head>
+
+<body class="g-sidenav-show bg-gray-200">
+
+    <header class="navbar">
+        <div class="navbar-inner">
+            <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <i class="material-icons">person</i>
+                <span id="username"></span>
+            </button>
+            <ul id="login-card" class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login"
+                aria-labelledby="dropdownMenuButton">
+                <div id="profileLogin" class="card card-plain">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Sign In</h4>
+                        <p class="mb-0">Enter your email and password to sign in</p>
+                    </div>
+                    <div class="card-body mt-2">
+                        <form id="loginForm1" role="form" method="post" action="javascript:void(0)">
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" id="email1" name="email" class="form-control" required>
+                            </div>
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" id="password1" name="password" class="form-control" required>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center mb-3">
+                                <a href="#" class="forgot-password">Forgot Password ?</a>
+                            </div>
+                            <div class="text-center">
+                                <button type="submit" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
+                                    in</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                <div id="profileContent" class="card card-plain hidden">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Profile</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>USERNAME</label>
+                                    <p id="usernameTxt"></p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>EMAIL</label>
+                                    <p id="emailTxt"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button class="btn btn-logout w-100">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </ul>
+
+            <button id="open-sidenav-button" class="open-sidenav-button">
+                <i class="material-icons">menu</i>
+            </button>
+
+            <img src="../../../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
+        </div>
+    </header>
+
+    <main class="main-content position-relative justify-items-center max-height-vh-100 h-100 border-radius-lg">
+        <div class="content-header">
+            <h2>Location Details</h2>
+            <span id="statusTag">Pending</span>
+        </div>
+        <div class="content-body">
+            <div class="row mt-4">
+                <div class="col-xl-7">
+                    <div class="card h-100">
+                        <div class="card-body d-flex p-3 justify-content-center align-items-center">
+                            <video id="videoPlayer" style="width: 100%; border-radius: 10px; height: 350px"
+                                height="auto" controls autoplay muted>
+                                <source id="videoSource" src="" type="video/mp4">
+                                Your browser does not support the video tag.
+                            </video>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-5 ms-auto mt-xl-0 mt-5">
+                    <div class="card h-100">
+                        <div class="card-body p-3">
+                            <div id="mapid" style="width: 100%; height: 350px; border-radius: 10px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row mt-4">
+                <div class="col-md-12 mb-lg-0 mb-4">
+                    <div class="card">
+                        <div class="card-body p-3">
+                            <div class="row">
+                                <div class="col-md-6 mb-md-0 mb-4">
+                                    <div
+                                        class="card card-body border card-plain border-radius-lg d-flex align-items-center flex-row">
+                                        <i class="material-icons text-dark cursor-pointer">person</i>
+                                        <h6 class="mb-0 ms-auto" id="detail-name">Loading...</h6>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div
+                                        class="card card-body border card-plain border-radius-lg d-flex align-items-center flex-row">
+                                        <i class="material-icons text-dark cursor-pointer">email</i>
+                                        <h6 class="mb-0 ms-auto" id="detail-email">Loading...</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-md-6 mb-md-0 mb-4">
+                                    <div
+                                        class="card card-body border card-plain border-radius-lg d-flex align-items-center flex-row">
+                                        <i class="material-icons text-dark cursor-pointer">map</i>
+                                        <h6 class="mb-0 ms-auto" id="detail-coordinates">0.0, 0.0</h6>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-md-0 mb-4">
+                                    <div
+                                        class="card card-body border card-plain border-radius-lg d-flex align-items-center flex-row">
+                                        <i class="material-icons text-dark cursor-pointer">qr_code</i>
+                                        <h6 class="mb-0 ms-auto" id="detail-aruco">-</h6>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-4">
+                                <div class="col-md-12 mb-md-0 mb-4">
+                                    <div
+                                        class="card card-body border card-plain border-radius-lg d-flex align-items-center flex-row">
+                                        <i class="material-icons text-dark cursor-pointer">location_on</i>
+                                        <h6 class="mb-0 ms-auto" id="detail-address">Fetching address...</h6>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <aside id="right-sidenav" class="right-sidenav">
+        <div class="sidenav-body">
+            <button id="close-sidenav-button" class="close-btn">&times;</button>
+            <div id="sidebarLogin" class="card card-plain">
+                <div class="card-header text-center">
+                    <h4 class="font-weight-bolder">You're not a member of SkyIntel</h4>
+                    <p class="mb-0">Please sign in as member</p>
+                </div>
+                <div class="card-body mt-2">
+                    <form id="loginForm2" method="post" action="javascript:void(0)">
+                        <div class="input-group input-group-outline mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" id="email2" name="email" class="form-control" required>
+                        </div>
+                        <div class="input-group input-group-outline mb-3">
+                            <label class="form-label">Password</label>
+                            <input type="password" id="password2" name="password" class="form-control" required>
+                        </div>
+                        <div class="input-group input-group-outline mb-3">
+                            <a href="#" class="forgot-password">Forgot Password ?</a>
+                        </div>
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-lg bg-gradient-warning w-100 mt-4 mb-0">Sign
+                                in</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <ul id="sidebarContent" class="navbar-nav hidden">
+                <li class="nav-item ">
+                    <a class="nav-link active" href="../../location-enrollment/">
+                        <i class="material-icons-round opacity-10">location_on</i>
+                        <span class="nav-link-text ms-2 ps-1">Location List</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </aside>
+
+    <script src="../../../assets/js/core/popper.min.js"></script>
+    <script src="../../../assets/js/core/bootstrap.min.js"></script>
+    <script src="../../../assets/js/plugins/perfect-scrollbar.min.js"></script>
+    <script src="../../../assets/js/plugins/smooth-scrollbar.min.js"></script>
+    <script src="../../../assets/js/plugins/jquery.min.js"></script>
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="../../../assets/js/material-dashboard.js?v=3.0.6"></script>
+    <script src="../../../assets/js/login.js"></script>
+    <script src="index.js"></script>
+</body>
+
+</html>

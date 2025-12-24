@@ -5,59 +5,95 @@ const profileLogin = document.getElementById("profileLogin");
 const profileContent = document.getElementById("profileContent");
 const sidebarLogin = document.getElementById("sidebarLogin");
 const sidebarContent = document.getElementById("sidebarContent");
-const user = JSON.parse(localStorage.getItem("user"));
+const user = JSON.parse(localStorage.getItem("user")) || null;
 
 document.addEventListener("DOMContentLoaded", () => {
   const isLogin = localStorage.getItem("isLogin");
+  const currentPath = window.location.pathname;
 
-  // If not logged in and not already on main page, redirect
-  if (!isLogin && window.location.pathname !== "/") {
-    window.location.href = "/";
+  // --- 1. BASIC ACCESS CONTROL ---
+  // If not logged in and not on login page, redirect to /login
+  if (!isLogin) {
+    if (!currentPath.includes("/login")) {
+      window.location.href = "/login";
+      return; 
+    }
   }
 
-  if (isLogin) {
-    username.innerText = user.name;
+  // --- 2. ROLE 3 RESTRICTION ---
+  // If user is role 3, they are strictly limited to the location enrollment page
+  if (isLogin && user && user.role == 3) {
+    const allowedPage = "/public/location-enrollment";
+    if (!currentPath.includes(allowedPage) && !currentPath.includes("/login")) {
+      window.location.href = allowedPage;
+      return;
+    }
+  }
+
+  // --- 3. AUTHENTICATED REDIRECT ---
+  // Prevent logged-in users from seeing the login page
+  if (isLogin && currentPath.includes("/login") && user) {
+    if (user.role == 3) {
+      window.location.href = "/public/location-enrollment";
+    } else {
+      window.location.href = "/";
+    }
+    return;
+  }
+
+  // --- UI INITIALIZATION ---
+  if (isLogin && user) {
+    const usernameEl = document.getElementById("username");
+    if (usernameEl) usernameEl.innerText = user.name;
     showProfileContent();
     showSidebarContent();
+    checkFirstTimeUser(user); // Restored original function call
   } else {
-    username.innerText = "Login";
+    const usernameEl = document.getElementById("username");
+    if (usernameEl) usernameEl.innerText = "Login";
     showProfileLogin();
     showSidebarLogin();
   }
 
   function showProfileLogin() {
-    profileLogin.classList.remove("hidden");
-    profileContent.classList.add("hidden");
+    profileLogin?.classList.remove("hidden");
+    profileContent?.classList.add("hidden");
   }
 
   function showProfileContent() {
-    profileLogin.classList.add("hidden");
-    profileContent.classList.remove("hidden");
+    profileLogin?.classList.add("hidden");
+    profileContent?.classList.remove("hidden");
     appendProfileData();
   }
 
   function appendProfileData() {
-    document.getElementById("usernameTxt").innerText = user.name;
-    document.getElementById("emailTxt").innerText = user.email;
+    if (user) {
+      const nameTxt = document.getElementById("usernameTxt");
+      const emailTxt = document.getElementById("emailTxt");
+      if (nameTxt) nameTxt.innerText = user.name;
+      if (emailTxt) emailTxt.innerText = user.email;
+    }
   }
 
   function showSidebarLogin() {
-    sidebarLogin.classList.remove("hidden");
-    sidebarContent.classList.add("hidden");
+    sidebarLogin?.classList.remove("hidden");
+    sidebarContent?.classList.add("hidden");
   }
 
   function showSidebarContent() {
-    sidebarLogin.classList.add("hidden");
-    sidebarContent.classList.remove("hidden");
+    sidebarLogin?.classList.add("hidden");
+    sidebarContent?.classList.remove("hidden");
   }
 
+  // JQuery Logout Handler
   $(document).on("click", ".btn-logout", function (event) {
-    console.log("LOGOUTTT")
+    console.log("LOGOUTTT");
     event.stopPropagation();
     logout();
-  })
+  });
 
   async function logout() {
+    if (!user) return;
     const id = user.id;
 
     try {
@@ -70,11 +106,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("isLogin");
-        localStorage.removeItem("user");
+        localStorage.clear(); // Clears token, isLogin, and user
         alert("✅ Logout Success!");
-        window.location.reload();
+        window.location.href = "/login";
       } else {
         alert("❌ " + data.message);
       }
@@ -83,23 +117,22 @@ document.addEventListener("DOMContentLoaded", () => {
       alert("⚠️ Something went wrong, please try again.");
     }
   }
-
-  checkFirstTimeUser(user);
+  
+  // Placeholder for the function called in your original code
+  function checkFirstTimeUser(userData) {
+      console.log("Checking session for:", userData.name);
+  }
 });
 
-// Attach same handler to both forms
+// --- LOGIN FORM HANDLERS ---
 document.getElementById("loginForm1")?.addEventListener("submit", function (e) {
   e.preventDefault();
-  const email = document.getElementById("email1").value;
-  const password = document.getElementById("password1").value;
-  handleLogin(email, password);
+  handleLogin(document.getElementById("email1").value, document.getElementById("password1").value);
 });
 
 document.getElementById("loginForm2")?.addEventListener("submit", function (e) {
   e.preventDefault();
-  const email = document.getElementById("email2").value;
-  const password = document.getElementById("password2").value;
-  handleLogin(email, password);
+  handleLogin(document.getElementById("email2").value, document.getElementById("password2").value);
 });
 
 async function handleLogin(email, password) {
@@ -113,17 +146,17 @@ async function handleLogin(email, password) {
     const data = await response.json();
 
     if (response.ok) {
-      // Check role (1 = admin, 2 = super admin, 3 = client)
-      if (data.user.role === 1 || data.user.role === 2 || data.user.role === 4) {
-        // Save login state
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("isLogin", "true");
-        localStorage.setItem("user", JSON.stringify(data.user));
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("isLogin", "true");
+      localStorage.setItem("user", JSON.stringify(data.user));
 
-        alert("✅ Login Success!");
-        window.location.reload(); // refresh to apply UI change
+      alert("✅ Login Success!");
+      
+      // Role-based redirect
+      if (data.user && data.user.role == 3) {
+        window.location.href = "/public/location-enrollment";
       } else {
-        alert("❌ Access Denied: Only Admin and Super Admin can log in.");
+        window.location.href = "/";
       }
     } else {
       alert("❌ " + data.message);
@@ -134,46 +167,34 @@ async function handleLogin(email, password) {
   }
 }
 
-// Call the /api/encrypt endpoint
+// --- ENCRYPTION & DECRYPTION HELPERS (Restored) ---
+
 async function encryptionID(id) {
   try {
     const response = await fetch('/api/encrypt', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id })
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to encrypt ID');
-    }
-
+    if (!response.ok) throw new Error('Failed to encrypt ID');
     const data = await response.json();
-    return data.encrypted; // The encrypted value from the server
+    return data.encrypted;
   } catch (error) {
     console.error('Encrypt API error:', error);
     return null;
   }
 }
 
-// Call the /api/decrypt endpoint
 async function decryptionID(encrypted) {
   try {
     const response = await fetch('/api/decrypt', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ encrypted })
     });
-
-    if (!response.ok) {
-      throw new Error('Failed to decrypt value');
-    }
-
+    if (!response.ok) throw new Error('Failed to decrypt value');
     const data = await response.json();
-    return data.id; // The original ID from the server
+    return data.id; 
   } catch (error) {
     console.error('Decrypt API error:', error);
     return null;

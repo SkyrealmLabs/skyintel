@@ -211,9 +211,9 @@ app.post('/api/login', async (req, res) => {
     }
 
     // ✅ Allow only Admin (1), Super Admin (2), and Role (4)
-    if (![1, 2, 4].includes(user.user_role_id)) {
-      return res.status(403).json({ message: "Access denied. Only Admin and Super Admin can log in." });
-    }
+    // if (![1, 2, 4].includes(user.user_role_id)) {
+    //   return res.status(403).json({ message: "Access denied. Only Admin and Super Admin can log in." });
+    // }
 
     // ✅ Update isLogin to 1 and increment login_count
     await new Promise((resolve, reject) => {

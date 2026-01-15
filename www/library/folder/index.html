@@ -23,36 +23,70 @@
             <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
                 aria-expanded="false">
                 <i class="material-icons">person</i>
-                <span>Login</span>
+                <span id="username"></span>
             </button>
-            <ul class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login" aria-labelledby="dropdownMenuButton">
-                <div class="card card-plain">
+            <ul id="login-card" class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login"
+                aria-labelledby="dropdownMenuButton">
+                <div id="profileLogin" class="card card-plain">
                     <div class="card-header text-center">
                         <h4 class="font-weight-bolder">Sign In</h4>
                         <p class="mb-0">Enter your email and password to sign in</p>
                     </div>
                     <div class="card-body mt-2">
-                        <form role="form">
+                        <form id="loginForm1" role="form" method="post" action="javascript:void(0)">
                             <div class="input-group input-group-outline mb-3">
                                 <label class="form-label">Email</label>
-                                <input type="email" class="form-control">
+                                <input type="email" id="email1" name="email" class="form-control" required>
                             </div>
                             <div class="input-group input-group-outline mb-3">
                                 <label class="form-label">Password</label>
-                                <input type="password" class="form-control">
+                                <input type="password" id="password1" name="password" class="form-control" required>
+                            </div>
+                            <div class="form-check form-switch d-flex align-items-center mb-3">
+                                <a href="#" class="forgot-password">Forgot Password ?</a>
                             </div>
                             <div class="text-center">
-                                <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign in</button>
+                                <button type="submit" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
+                                    in</button>
                             </div>
                         </form>
                     </div>
                 </div>
+                <div id="profileContent" class="card card-plain">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Profile</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="profile">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>USERNAME</label>
+                                    <p id="usernameTxt"></p>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <label>EMAIL</label>
+                                    <p id="emailTxt"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <button class="btn btn-logout w-100">Logout</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </ul>
-            
+            <!-- Toggle button on right -->
             <button id="open-sidenav-button" class="open-sidenav-button">
                 <i class="material-icons">menu</i>
             </button>
 
+            <!-- Logo in center -->
             <img src="../../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
         </div>
     </header>

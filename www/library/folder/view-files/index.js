@@ -22,12 +22,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function initFilePage() {
     const urlParams = new URLSearchParams(window.location.search);
-    const encryptedId = urlParams.get('library_id'); 
+    const encryptedId = urlParams.get('library_id');
     const folderType = urlParams.get('folder_type'); // 'Main' atau 'Archieve'
-    
+
     // Set Tajuk Halaman
     const pageTitle = document.getElementById('pageTitle');
-    if(pageTitle) pageTitle.textContent = folderType || 'Files';
+    if (pageTitle) pageTitle.textContent = folderType || 'Files';
 
     if (!encryptedId || !folderType) {
         console.error("Missing library_id or folder_type params");
@@ -45,7 +45,7 @@ async function initFilePage() {
 async function loadFiles(libraryId, folderType) {
     try {
         const userId = userData ? userData.id : 0;
-        
+
         // Fetch files dari API
         const response = await fetch(`/api/library/files?library_id=${libraryId}&folder_type=${folderType}&user_id=${userId}`);
         const files = await response.json();
@@ -65,8 +65,8 @@ async function loadFiles(libraryId, folderType) {
 
             // Bersihkan path file (jika server guna Windows backslash)
             // Pastikan server anda serve static folder 'uploads'
-            const cleanPath = file.file_path.replace(/\\/g, '/'); 
-            const fileUrl = `/${cleanPath}`; 
+            const cleanPath = file.file_path.replace(/\\/g, '/');
+            const fileUrl = `/${cleanPath}`;
 
             // Check acknowledgement status untuk badge
             const isAck = file.is_acknowledged === 1;
@@ -119,16 +119,25 @@ function setupPdfModal() {
     // 1. EVENT: Modal Dibuka
     pdfModal.addEventListener('show.bs.modal', (event) => {
         const button = event.relatedTarget; // Element kad yang diklik
-        
+
         // Ambil data dari attribute
-        const pdfUrl = button.getAttribute('data-pdf');
+        let rawPath = button.getAttribute('data-pdf');
         const fileName = button.getAttribute('data-filename');
         const isAck = button.getAttribute('data-acknowledged') === '1';
         currentFileId = button.getAttribute('data-fileid');
 
+        rawPath = rawPath.replace(/\\/g, '/');
+
+        let relativePath = rawPath;
+        if (rawPath.includes('/uploads/')) {
+            relativePath = rawPath.split('/uploads/')[1];
+        }
+
+        const finalUrl = `https://skyintel.zulsyah.com/uploads/${relativePath}`;
+
         // Update Content
         modalTitle.textContent = fileName;
-        pdfIframe.src = pdfUrl;
+        pdfIframe.src = finalUrl;
 
         // Reset Button State
         // Kita guna cloneNode untuk buang event listener lama supaya tak double click
@@ -188,7 +197,7 @@ async function processAcknowledgement(fileId, btn, checkbox) {
 
             // Success: Update Card UI (Background)
             updateCardBadge(fileId);
-            
+
             // Update attribute data pada card (penting jika user buka balik modal tanpa refresh)
             const card = document.querySelector(`.clickable-card[data-fileid="${fileId}"]`);
             if (card) card.setAttribute('data-acknowledged', '1');
@@ -257,7 +266,7 @@ function setupSidenav() {
     const droneListTarget = document.querySelector('#droneDropdown');
     const adminListTarget = document.querySelector('#adminDropdown');
 
-    if(droneListTarget) {
+    if (droneListTarget) {
         droneListTarget.addEventListener('show.bs.collapse', () => {
             document.getElementById('droneDropdownIcon')?.classList.add('rotate-180');
         });
@@ -265,8 +274,8 @@ function setupSidenav() {
             document.getElementById('droneDropdownIcon')?.classList.remove('rotate-180');
         });
     }
-    
-    if(adminListTarget) {
+
+    if (adminListTarget) {
         adminListTarget.addEventListener('show.bs.collapse', () => {
             document.getElementById('adminDropdownIcon')?.classList.add('rotate-180');
         });

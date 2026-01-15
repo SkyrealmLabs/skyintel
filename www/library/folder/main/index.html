@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <link rel="icon" type="image/png" href="../assets/img/drone-icon.png">
+    <link rel="icon" type="image/png" href="../../../assets/img/drone-icon.png">
     <title>SkyIntel - Drone Fleet Monitoring</title>
 
     <!-- Fonts and icons -->
@@ -18,8 +18,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 
     <!-- CSS Files -->
-    <link id="pagestyle" href="../assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
-    <link id="pagestyle" href="../assets/css/style.css" rel="stylesheet" />
+    <link id="pagestyle" href="../../../assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
+    <link id="pagestyle" href="../../../assets/css/style.css" rel="stylesheet" />
 </head>
 
 <body class="g-sidenav-show bg-gray-200">
@@ -30,61 +30,32 @@
             <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
                 aria-expanded="false">
                 <i class="material-icons">person</i>
-                <span id="username"></span>
+                <span>Login</span>
             </button>
-            <ul id="login-card" class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login"
-                aria-labelledby="dropdownMenuButton">
-                <div id="profileLogin" class="card card-plain">
+            <ul class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login" aria-labelledby="dropdownMenuButton">
+                <div class="card card-plain">
                     <div class="card-header text-center">
                         <h4 class="font-weight-bolder">Sign In</h4>
                         <p class="mb-0">Enter your email and password to sign in</p>
                     </div>
                     <div class="card-body mt-2">
-                        <form id="loginForm1" role="form" method="post" action="javascript:void(0)">
+                        <form role="form">
                             <div class="input-group input-group-outline mb-3">
                                 <label class="form-label">Email</label>
-                                <input type="email" id="email1" name="email" class="form-control" required>
+                                <input type="email" class="form-control">
                             </div>
                             <div class="input-group input-group-outline mb-3">
                                 <label class="form-label">Password</label>
-                                <input type="password" id="password1" name="password" class="form-control" required>
+                                <input type="password" class="form-control">
                             </div>
                             <div class="form-check form-switch d-flex align-items-center mb-3">
                                 <a href="#" class="forgot-password">Forgot Password ?</a>
                             </div>
                             <div class="text-center">
-                                <button type="submit" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
+                                <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign
                                     in</button>
                             </div>
                         </form>
-                    </div>
-                </div>
-                <div id="profileContent" class="card card-plain">
-                    <div class="card-header text-center">
-                        <h4 class="font-weight-bolder">Profile</h4>
-                    </div>
-                    <div class="card-body">
-                        <div class="profile">
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <label>USERNAME</label>
-                                    <p id="usernameTxt"></p>
-                                </div>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-12">
-                                    <label>EMAIL</label>
-                                    <p id="emailTxt"></p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-footer">
-                        <div class="row">
-                            <div class="col-md-12">
-                                <button class="btn btn-logout w-100">Logout</button>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </ul>
@@ -94,130 +65,36 @@
             </button>
 
             <!-- Logo in center -->
-            <img src="../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
+            <img src="../../../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
         </div>
     </header>
 
     <main class="main-content position-relative justify-items-center max-height-vh-100 h-100 border-radius-lg">
         <!-- Main content goes here -->
         <div class="content-header">
-            <h2>Library</h2>
-            <button class="btn bg-gradient-primary btn-md float-end mb-0 w-200" data-bs-toggle="modal"
-                data-bs-target="#createFolderModal">
-                <i class="material-icons">add</i> Create Folder
-            </button>
+            <h2>Main</h2>
         </div>
         <div class="content-body">
             <div class="row my-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="table-responsive">
-                            <table class="table align-items-center mb-0">
-                                <thead>
-                                    <tr>
-                                        <th class="text-uppercase text-xxs font-weight-bolder opacity-7">Document</th>
-                                        <th class="text-uppercase text-xxs font-weight-bolder opacity-7 ps-2">Version
-                                        </th>
-                                        <th class="text-uppercase text-xxs font-weight-bolder opacity-7 ps-2">Author
-                                        </th>
-                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">
-                                            Last Update</th>
-                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">
-                                            Acknowledgement Status</th>
-                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">
-                                            Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="libraryTableBody">
-                                </tbody>
-                            </table>
+
+                <!-- PDF File Card -->
+                <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6 mb-4">
+                    <div class="card pdf-card h-100 text-center clickable-card" data-bs-toggle="modal"
+                        data-bs-target="#pdfViewerModal"
+                        data-pdf="https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf">
+                        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                            <i class="material-icons text-danger mb-2" style="font-size:48px;">picture_as_pdf</i>
+                            <h6 class="font-weight-bold text-truncate w-100 mb-1">Main.pdf</h6>
+                            <p class="text-muted text-xs mb-0">Maxting</p>
+                            <p class="text-xs text-muted mb-0">Modified: 22/01/2025</p>
+                            <p class="text-xs text-muted mb-0">v1.2.0</p>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
-        <!-- Create Folder Modal -->
-        <div class="modal fade" id="createFolderModal" tabindex="-1" role="dialog"
-            aria-labelledby="createFolderModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title font-weight-normal" id="createFolderModalLabel">Create Folder</h5>
-                        <button type="button" class="btn-close text-dark" data-bs-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="input-group input-group-outline mt-3 mb-3">
-                            <label class="form-label">Folder Name</label>
-                            <input type="text" id="folderNameInput" class="form-control">
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn bg-gradient-secondary" data-bs-dismiss="modal">Close</button>
-                        <button type="button" id="saveFolderBtn" class="btn bg-gradient-primary">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <!-- Upload File Modal -->
-        <div class="modal fade" id="uploadFileModal" tabindex="-1" role="dialog" aria-labelledby="uploadFileModalLabel"
-            aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title font-weight-normal" id="uploadFileModalLabel">Upload File</h5>
-                        <button type="button" class="btn-close text-dark" data-bs-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="input-group input-group-outline mt-3 mb-3">
-                            <label class="form-label">File Version</label>
-                            <input type="text" id="fileVersion" required class="form-control">
-                        </div>
-                        <div class="file-upload">
-                            <div class="dropbox" id="dropbox">
-                                <div class="dropbox-icon"><i
-                                        class="material-icons text-secondary position-relative text-lg">file_upload</i>
-                                </div>
-                                <div class="dropbox-text">Drop files here</div>
-                                <div class="dropbox-subtext">Supported formats: JPEG, PNG, PDF (Max 5MB)</div>
-                                <button class="browse-btn">Browse Files</button>
-                                <input type="file" id="fileInput" hidden>
-                            </div>
 
-                            <div class="upload-stats" id="uploadStats">
-                                <div class="stats-info">
-                                    <div class="stat-item">
-                                        <div class="stat-value" id="fileCount">0</div>
-                                        <div class="stat-label">Files</div>
-                                    </div>
-                                    <div class="stat-item">
-                                        <div class="stat-value" id="totalSize">0 KB</div>
-                                        <div class="stat-label">Total Size</div>
-                                    </div>
-                                </div>
-
-                            </div>
-
-                            <div class="empty-state" id="emptyState"></div>
-
-                            <div class="file-previews" id="filePreviews">
-                                <div class="progress-bar" id="progress-bar" style="margin-top: 15px;">
-                                    <div class="progress-fill" id="progressFill"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" id="closeUploadModal" class="btn bg-gradient-secondary"
-                            data-bs-dismiss="modal">Close</button>
-                        <button type="button" id="saveUploadFile" class="btn bg-gradient-primary">Save</button>
-                    </div>
-                </div>
-            </div>
-        </div>
         <!-- PDF Viewer Modal -->
         <div class="modal fade" id="pdfViewerModal" tabindex="-1" role="dialog" aria-labelledby="pdfViewerModalLabel"
             aria-hidden="true">
@@ -230,8 +107,7 @@
                         </button>
                     </div>
                     <div class="modal-body p-0" style="height: calc(100% - 56px);">
-                        <iframe id="pdfIframe" src="https://ontheline.trincoll.edu/images/bookdown/sample-local-pdf.pdf"
-                            style="width: 100%; height: 100%; border: none;"></iframe>
+                        <iframe id="pdfIframe" src="" style="width: 100%; height: 100%; border: none;"></iframe>
                     </div>
                     <div class="modal-footer gap-5">
                         <div class="acknowledgement form-check">
@@ -285,13 +161,13 @@
                     </a>
                 </li>
                 <li class="nav-item ">
-                    <a class="nav-link" href="../personel/">
+                    <a class="nav-link" href="../../../personel/">
                         <i class="material-icons-round opacity-10">person</i>
                         <span class="nav-link-text ms-2 ps-1">Personel</span>
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link active" href="../library/">
+                    <a class="nav-link active" href="../../../library/">
                         <i class="material-icons-round opacity-10">library_books</i>
                         <span class="nav-link-text ms-2 ps-1">Library</span>
                     </a>
@@ -307,19 +183,19 @@
                     <div class="collapse " id="droneDropdown">
                         <ul class="nav d-flex flex-column mt-1 gap-1">
                             <li class="nav-item ">
-                                <a class="nav-link" href="../drone/">
+                                <a class="nav-link" href="../../../drone/">
                                     <span class="sidenav-mini-icon"> L </span>
                                     <span class="sidenav-normal  ms-2  ps-1"> List </span>
                                 </a>
                             </li>
                             <li class="nav-item ">
-                                <a class="nav-link" href="../drone/flight-log/">
+                                <a class="nav-link" href="../../../drone/flight-log/">
                                     <span class="sidenav-mini-icon"> F </span>
                                     <span class="sidenav-normal  ms-2  ps-1"> Flight Log </span>
                                 </a>
                             </li>
                             <li class="nav-item ">
-                                <a class="nav-link" href="../drone/maintenance-log/">
+                                <a class="nav-link" href="../../../drone/maintenance-log/">
                                     <span class="sidenav-mini-icon"> M </span>
                                     <span class="sidenav-normal  ms-2  ps-1"> Maintenance Log </span>
                                 </a>
@@ -338,7 +214,7 @@
                     <div class="collapse" id="adminDropdown">
                         <ul class="nav d-flex flex-column mt-1 gap-1">
                             <li class="nav-item ">
-                                <a class="nav-link" href="../administration/enrollment/">
+                                <a class="nav-link" href="../../../administration/enrollment/">
                                     <span class="sidenav-mini-icon"> E </span>
                                     <span class="sidenav-normal  ms-2  ps-1"> Enrollment </span>
                                 </a>
@@ -378,28 +254,27 @@
     </script>
 
     <!-- Core JS Files -->
-    <script src="../assets/js/core/popper.min.js"></script>
-    <script src="../assets/js/core/bootstrap.min.js"></script>
-    <script src="../assets/js/plugins/perfect-scrollbar.min.js"></script>
-    <script src="../assets/js/plugins/smooth-scrollbar.min.js"></script>
-    <script src="../assets/js/plugins/jquery.min.js"></script>
+    <script src="../../../assets/js/core/popper.min.js"></script>
+    <script src="../../../assets/js/core/bootstrap.min.js"></script>
+    <script src="../../../assets/js/plugins/perfect-scrollbar.min.js"></script>
+    <script src="../../../assets/js/plugins/smooth-scrollbar.min.js"></script>
+    <script src="../../../assets/js/plugins/jquery.min.js"></script>
 
     <!-- Kanban scripts -->
-    <script src="../assets/js/plugins/dragula/dragula.min.js"></script>
-    <script src="../assets/js/plugins/jkanban/jkanban.js"></script>
-    <script src="../assets/js/plugins/chartjs.min.js"></script>
+    <script src="../../../assets/js/plugins/dragula/dragula.min.js"></script>
+    <script src="../../../assets/js/plugins/jkanban/jkanban.js"></script>
+    <script src="../../../assets/js/plugins/chartjs.min.js"></script>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
     <!-- Control Center for Material Dashboard -->
-    <script src="../assets/js/material-dashboard.js?v=3.0.6"></script>
-    <script src="../assets/js/leaflet.rotatedMarker.js"></script>
-    <script src="../assets/js/backend_handler.js"></script>
+    <script src="../../../assets/js/material-dashboard.js?v=3.0.6"></script>
+    <script src="../../../assets/js/leaflet.rotatedMarker.js"></script>
+    <script src="../../../assets/js/backend_handler.js"></script>
     <script src="index.js"></script>
-    <script src="../assets/js/login.js"></script>
-    <script src="../assets/js/plugins/choices.min.js"></script>
-    <script src="../assets/js/plugins/flatpickr.min.js"></script>
+    <script src="../../../assets/js/plugins/choices.min.js"></script>
+    <script src="../../../assets/js/plugins/flatpickr.min.js"></script>
 
     <script>
         if (document.getElementById('choices-gender')) {

@@ -2,23 +2,18 @@ let map;
 let marker;
 
 document.addEventListener('DOMContentLoaded', () => {
-    // --- SIDEBAR & URL LOGIC ---
     const openSideNav = document.getElementById("open-sidenav-button");
     const closeSideNav = document.getElementById("close-sidenav-button");
-    const urlParams = new URLSearchParams(window.location.search);
-    const locationId = urlParams.get('id');
 
-    console.log('Location ID:', locationId);
-
-    openSideNav.addEventListener("click", function () {
+    openSideNav.addEventListener("click", () => {
         document.getElementById("right-sidenav").style.width = "400px";
     });
 
-    closeSideNav.addEventListener("click", function () {
+    closeSideNav.addEventListener("click", () => {
         document.getElementById("right-sidenav").style.width = "0";
     });
 
-    // --- DROPDOWN ANIMATION LOGIC ---
+    // Dropdown logic (unchanged)
     const droneListTarget = document.querySelector('#droneDropdown');
     const adminListTarget = document.querySelector('#adminDropdown');
     const droneDropdownIcon = document.querySelector('#droneDropdownIcon');
@@ -34,15 +29,34 @@ document.addEventListener('DOMContentLoaded', () => {
         adminListTarget.addEventListener('hide.bs.collapse', () => adminDropdownIcon.classList.remove('rotate-180'));
     }
 
-    // --- INITIALIZATION ---
     initMap();
 
-    if (locationId) {
-        fetchLocationDetails(locationId);
-    } else {
-        console.warn("No ID provided in URL parameters.");
-    }
+    // ✅ Async block
+    (async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encryptedLocationId = urlParams.get('id');
+
+        if (!encryptedLocationId) {
+            console.warn("No ID provided in URL parameters.");
+            return;
+        }
+
+        const decodedEncryptedId = decodeURIComponent(encryptedLocationId);
+        const locationId = await decryptLocationID(decodedEncryptedId);
+
+        console.log('Decrypted Location ID:', locationId);
+
+        if (locationId) {
+            fetchLocationDetails(locationId);
+        }
+    })();
 });
+
+
+async function decryptLocationID(locationID) {
+    const encryptedLocationId = await decryptionID(locationID);
+    return encryptedLocationId;
+}
 
 /**
  * Fetches location data from API and updates UI
@@ -82,9 +96,9 @@ function updateDashboard(data) {
 
     //2. Status
     tag.className = "badge fs-7 " + (
-      data.status === "approved" ? "badge-success" :
-      data.status === "rejected" ? "badge-danger" :
-      "badge-warning"
+        data.status === "approved" ? "badge-success" :
+            data.status === "rejected" ? "badge-danger" :
+                "badge-warning"
     );
 
     // 3. Map Marker & View
@@ -100,7 +114,7 @@ function updateDashboard(data) {
     if (data.mediaPath) {
         const videoPlayer = document.getElementById('videoPlayer');
         const fileName = data.mediaPath.split('/').pop();
-        videoPlayer.src = `https://skyintel.zulsyah.com/uploads/${fileName}`; 
+        videoPlayer.src = `https://skyintel.zulsyah.com/uploads/${fileName}`;
         videoPlayer.load();
     }
 

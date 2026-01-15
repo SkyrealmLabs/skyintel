@@ -7,6 +7,8 @@
   <link rel="icon" type="image/png" href="./assets/img/drone-icon.png">
   <title>SkyIntel - Drone Fleet Monitoring</title>
 
+  <link rel="preconnect" href="https://tile.openstreetmap.org">
+
   <link rel="stylesheet" type="text/css"
     href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900|Roboto+Slab:400,700" />
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
@@ -17,6 +19,20 @@
 
   <link id="pagestyle" href="./assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
   <link id="pagestyle" href="./assets/css/style.css" rel="stylesheet" />
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCdF7hYgmfKIpRPUY9XTNwIjRA2XCwQgPc" async defer></script>
+  <script src="https://unpkg.com/leaflet.gridlayer.googlemutant@latest/dist/Leaflet.GoogleMutant.js"></script>
+
+  <style>
+    /* Ensures the browser knows to optimize these elements for movement */
+    .leaflet-marker-icon {
+        will-change: transform;
+    }
+    .accordion-button img {
+        transition: transform 0.2s;
+    }
+  </style>
 
 </head>
 
@@ -297,7 +313,6 @@
     const video = document.getElementById('video');
     const videoSrc = 'https://gcs.zulsyah.com/drone_camera/0';
 
-    // Added safety check
     if (video) {
         if (Hls.isSupported()) {
           const hls = new Hls();
@@ -341,8 +356,6 @@
   <script src="./assets/js/plugins/dragula/dragula.min.js"></script>
   <script src="./assets/js/plugins/jkanban/jkanban.js"></script>
   <script src="./assets/js/plugins/chartjs.min.js"></script>
-
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <script src="./assets/js/material-dashboard.js?v=3.0.6"></script>
   <script src="./assets/js/leaflet.rotatedMarker.js"></script>

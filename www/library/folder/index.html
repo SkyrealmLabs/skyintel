@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <link rel="icon" type="image/png" href="../../assets/img/drone-icon.png">
+    <title>SkyIntel - Library Files</title>
+
+    <link rel="stylesheet" type="text/css"
+        href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,900|Roboto+Slab:400,700" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css" rel="stylesheet">
+
+    <link id="pagestyle" href="../../assets/css/material-dashboard.css?v=3.0.6" rel="stylesheet" />
+    <link id="pagestyle" href="../../assets/css/style.css" rel="stylesheet" />
+</head>
+
+<body class="g-sidenav-show bg-gray-200">
+
+    <header class="navbar">
+        <div class="navbar-inner">
+            <button id="login-profile" class="login-profile" id="dropdownMenuButton" data-bs-toggle="dropdown"
+                aria-expanded="false">
+                <i class="material-icons">person</i>
+                <span>Login</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end p-2 ms-n4 dropdown-login" aria-labelledby="dropdownMenuButton">
+                <div class="card card-plain">
+                    <div class="card-header text-center">
+                        <h4 class="font-weight-bolder">Sign In</h4>
+                        <p class="mb-0">Enter your email and password to sign in</p>
+                    </div>
+                    <div class="card-body mt-2">
+                        <form role="form">
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Email</label>
+                                <input type="email" class="form-control">
+                            </div>
+                            <div class="input-group input-group-outline mb-3">
+                                <label class="form-label">Password</label>
+                                <input type="password" class="form-control">
+                            </div>
+                            <div class="text-center">
+                                <button type="button" class="btn btn-lg bg-gradient-warning btn-lg w-100 mt-4 mb-0">Sign in</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </ul>
+            
+            <button id="open-sidenav-button" class="open-sidenav-button">
+                <i class="material-icons">menu</i>
+            </button>
+
+            <img src="../../assets/img/DRONE MONITORING.png" alt="Logo" class="navbar-logo">
+        </div>
+    </header>
+
+    <main class="main-content position-relative justify-items-center max-height-vh-100 h-100 border-radius-lg">
+        <div class="content-header">
+            <h2 id="folderTitle">Loading...</h2>
+            <button class="btn bg-gradient-primary btn-md float-end mb-0 w-200" data-bs-toggle="modal"
+                data-bs-target="#uploadFileModal">
+                <i class="material-icons">file_upload</i> Upload File
+            </button>
+        </div>
+        <div class="content-body">
+            <div class="row my-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="table-responsive">
+                            <table class="table align-items-center mb-0">
+                                <thead>
+                                    <tr>
+                                        <th class="text-uppercase text-xxs font-weight-bolder opacity-7">Folder</th>
+                                        <th class="text-uppercase text-xxs font-weight-bolder opacity-7 ps-2">Author</th>
+                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">Updated Date</th>
+                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">Last Modified</th>
+                                        <th class="text-center text-uppercase text-xxs font-weight-bolder opacity-7">Last Version</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="folderTableBody">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="uploadFileModal" tabindex="-1" role="dialog" aria-labelledby="uploadFileModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title font-weight-normal" id="uploadFileModalLabel">Upload File</h5>
+                        <button type="button" class="btn-close text-dark" data-bs-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="input-group input-group-outline mt-3 mb-3">
+                            <label class="form-label">File Version</label>
+                            <input type="text" id="fileVersion" required class="form-control">
+                        </div>
+                        <div class="file-upload">
+                            <div class="dropbox" id="dropbox">
+                                <div class="dropbox-icon"><i class="material-icons text-secondary position-relative text-lg">file_upload</i></div>
+                                <div class="dropbox-text">Drop files here</div>
+                                <div class="dropbox-subtext">Supported formats: JPEG, PNG, PDF (Max 5MB)</div>
+                                <button class="browse-btn">Browse Files</button>
+                                <input type="file" id="fileInput" hidden>
+                            </div>
+
+                            <div class="upload-stats" id="uploadStats">
+                                <div class="stats-info">
+                                    <div class="stat-item">
+                                        <div class="stat-value" id="fileCount">0</div>
+                                        <div class="stat-label">Files</div>
+                                    </div>
+                                    <div class="stat-item">
+                                        <div class="stat-value" id="totalSize">0 KB</div>
+                                        <div class="stat-label">Total Size</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="empty-state" id="emptyState"></div>
+
+                            <div class="file-previews" id="filePreviews">
+                                <div class="progress-bar" id="progress-bar" style="margin-top: 15px;">
+                                    <div class="progress-fill" id="progressFill"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" id="closeUploadModal" class="btn bg-gradient-secondary" data-bs-dismiss="modal">Close</button>
+                        <button type="button" id="saveUploadFile" class="btn bg-gradient-primary">Save</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <aside id="right-sidenav" class="right-sidenav">
+        <div class="sidenav-body">
+            <button id="close-sidenav-button" class="close-btn">&times;</button>
+            <div class="card card-plain hidden">
+                <div class="card-header text-center">
+                    <h4 class="font-weight-bolder">You're not a member of SkyIntel</h4>
+                    <p class="mb-0">Please sign in as member</p>
+                </div>
+                </div>
+            <ul class="navbar-nav">
+                 <li class="nav-item">
+                    <a class="nav-link active" href="../../library/">
+                        <i class="material-icons-round opacity-10">library_books</i>
+                        <span class="nav-link-text ms-2 ps-1">Library</span>
+                    </a>
+                </li>
+                </ul>
+        </div>
+    </aside>
+
+    <script src="../../assets/js/core/popper.min.js"></script>
+    <script src="../../assets/js/core/bootstrap.min.js"></script>
+    <script src="../../assets/js/plugins/perfect-scrollbar.min.js"></script>
+    <script src="../../assets/js/plugins/smooth-scrollbar.min.js"></script>
+    <script src="../../assets/js/material-dashboard.js?v=3.0.6"></script>
+    <script src="../../assets/js/login.js"></script> 
+    <script src="index.js"></script>
+</body>
+</html>

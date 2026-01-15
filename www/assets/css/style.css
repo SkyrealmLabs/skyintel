@@ -1159,6 +1159,14 @@ input[type="file"] {
   display: none;
 }
 
+.clickable-row {
+    cursor: pointer;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 0, 0, 0.03);
+}
+
 @media (max-width: 767.98px) {
   .main-content .content-header {
     width: 100%;
@@ -1185,4 +1193,28 @@ input[type="file"] {
     display: flex;
     flex-direction: column;
   }
+}
+
+.pdf-card {
+  cursor: pointer;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: #fff;
+  padding: 12px;
+}
+
+.pdf-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.pdf-card h6 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdf-card p {
+  margin: 0;
 }

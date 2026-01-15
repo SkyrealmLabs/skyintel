@@ -1423,7 +1423,7 @@ app.post('/api/files/upload', uploadLibraryFile.single('file'), (req, res) => {
 
                     // STEP B: Cari member yang aktif (untuk assign task acknowledge)
                     // Anda boleh ubah WHERE clause ikut logic role sistem anda
-                    const getMembersQuery = `SELECT id FROM user WHERE user_role_id IN (1, 3)`; 
+                    const getMembersQuery = `SELECT id FROM user WHERE user_role_id IN (1, 2, 4)`; 
 
                     connection.query(getMembersQuery, (err, members) => {
                         if (err) {
@@ -1606,6 +1606,8 @@ app.get('/api/library/files', (req, res) => {
 // API: File Acknowledgement
 app.post('/api/files/acknowledge', (req, res) => {
     const { user_id, file_id } = req.body;
+    console.log("🚀 ~ file_id:", file_id)
+    console.log("🚀 ~ user_id:", user_id)
 
     if (!user_id || !file_id) {
         return res.status(400).json({ message: "Missing user_id or file_id" });
@@ -1618,7 +1620,7 @@ app.post('/api/files/acknowledge', (req, res) => {
     const sql = `
         UPDATE user_acknowledgement 
         SET is_acknowledged = 1, updated_at = ? 
-        WHERE user_id = ? AND file_id = ?
+        WHERE user_id = ? AND files_id = ?
     `;
 
     db.query(sql, [timestamp, user_id, file_id], (err, result) => {

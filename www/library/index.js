@@ -17,32 +17,67 @@ const progressBar = document.getElementById('progress-bar');
 
 let fileCount = 0;
 let totalSize = 0;
+let currentReportData = [];
+let currentReportTitle = "Report";
 
 // --- INTEGRASI API: MENGAMBIL DATA SUMMARY ---
 async function loadLibrarySummary() {
     try {
-        const response = await fetch('/api/library/summary');
+        // 1. Dapatkan info user semasa dari LocalStorage
+        const userData = JSON.parse(localStorage.getItem("user") || "{}");
+        const currentUserId = userData.id;
+        const currentUserRole = userData.role; // 1: Admin, 2: SuperAdmin, 4: Member
+
+        // 2. Pass user_id ke API
+        const response = await fetch(`/api/library/summary?user_id=${currentUserId}`);
         const data = await response.json();
 
         const tableBody = document.querySelector('table tbody');
         if (!tableBody) return;
 
-        tableBody.innerHTML = ''; // Kosongkan data statik asal
+        tableBody.innerHTML = ''; 
 
-        // Guna for...of untuk membolehkan penggunaan await di dalam gelung
         for (const item of data) {
-            // Ambil tarikh sahaja dari timestamp (YYYY-MM-DD)
             const displayDate = item.last_update ? item.last_update.split(' ')[0] : '-';
-            
             const row = document.createElement('tr');
             row.className = 'clickable-row';
 
-            // Menunggu proses enkripsi ID selesai
             const encrypted = await encryptionID(item.library_id);
-            
-            // Simpan id dalam URL supaya page folder boleh guna
             row.dataset.href = `./folder?id=${encodeURIComponent(encrypted)}&name=${encodeURIComponent(item.document_name)}`;
 
+            // --- LOGIC UI STATUS ---
+            let statusColumnContent = '';
+
+            if (currentUserRole === 4) { 
+                // === VIEW UNTUK MEMBER (Status Diri Sendiri) ===
+                if (item.user_ack_status === 1) {
+                    statusColumnContent = `
+                        <span class="badge badge-sm bg-gradient-success">Acknowledged</span>
+                    `;
+                } else {
+                    statusColumnContent = `
+                        <span class="badge badge-sm bg-gradient-warning">Pending</span>
+                    `;
+                }
+            } else {
+                // === VIEW UNTUK ADMIN/SUPERADMIN (Progress Bar Keseluruhan) ===
+                statusColumnContent = `
+                    <div class="d-flex align-items-center justify-content-center">
+                        <div class="progress-wrapper d-flex align-items-center gap-2">
+                            <div class="progress" style="height: 6px; width: 100px;">
+                                <div class="progress-bar bg-gradient-info" role="progressbar" 
+                                    aria-valuenow="${item.ack_percentage}" aria-valuemin="0" aria-valuemax="100" 
+                                    style="width: ${item.ack_percentage}%; height: 6px;"></div>
+                            </div>
+                            <div class="progress-info">
+                                <span class="text-sm font-weight-bold">${item.ack_percentage}%</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // Masukkan content ke dalam row HTML
             row.innerHTML = `
                 <td>
                     <div class="d-flex px-2 py-1">
@@ -57,30 +92,51 @@ async function loadLibrarySummary() {
                 <td><p class="font-weight-normal mb-0">${item.last_version || '-'}</p></td>
                 <td><p class="font-weight-normal mb-0">${item.author || 'System'}</p></td>
                 <td class="align-middle text-center"><p class="mb-0 font-weight-normal">${displayDate}</p></td>
+                
                 <td class="align-middle text-center">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <div class="progress-wrapper d-flex align-items-center gap-2">
-                            <div class="progress" style="height: 6px; width: 100px;">
-                                <div class="progress-bar bg-gradient-info" role="progressbar" 
-                                     aria-valuenow="${item.ack_percentage}" aria-valuemin="0" aria-valuemax="100" 
-                                     style="width: ${item.ack_percentage}%; height: 6px;"></div>
-                            </div>
-                            <div class="progress-info">
-                                <span class="text-sm font-weight-bold">${item.ack_percentage}%</span>
-                            </div>
-                        </div>
-                    </div>
+                    ${statusColumnContent}
                 </td>
+
                 <td class="align-middle text-center">
-                    <button class="btn btn-link p-0 m-0 border-0 view-stats-btn" data-id="${item.library_id}">
-                        <i class="material-icons text-secondary position-relative text-lg">assessment</i>
-                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-link text-secondary mb-0" 
+                                type="button" 
+                                id="dropdownMenuButton-${item.library_id}" 
+                                data-bs-toggle="dropdown" 
+                                aria-expanded="false"
+                                onclick="event.stopPropagation()"> <i class="material-icons text-lg">more_vert</i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end px-2 py-3" aria-labelledby="dropdownMenuButton-${item.library_id}">
+                            <li>
+                                <a class="dropdown-item border-radius-md" href="javascript:;" 
+                                onclick="viewReport(${item.library_id}, event)">
+                                    <i class="material-icons text-sm me-2">assessment</i> View Report
+                                </a>
+                            </li>
+                            ${currentUserRole !== 4 ? `
+                            <li>
+                                <a class="dropdown-item border-radius-md" href="javascript:;" 
+                                onclick="editLibrary(${item.library_id}, '${item.document_name}', event)">
+                                    <i class="material-icons text-sm me-2">edit</i> Edit
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item border-radius-md text-danger" href="javascript:;" 
+                                onclick="deleteLibrary(${item.library_id}, event)">
+                                    <i class="material-icons text-sm me-2">delete</i> Delete
+                                </a>
+                            </li>
+                            ` : ''}
+                        </ul>
+                    </div>
                 </td>
             `;
 
-            // Event listener untuk row click
             row.addEventListener('click', (e) => {
-                if (!e.target.closest('button')) {
+                if (!e.target.closest('.dropdown')) {
                     const href = row.dataset.href;
                     if (href) window.location.href = href;
                 }
@@ -123,7 +179,7 @@ dropbox.addEventListener('click', () => {
 });
 
 browseBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     fileInput.click();
 });
 
@@ -187,7 +243,7 @@ function displayFilePreview(file) {
         preview.querySelector('.remove-btn').addEventListener('click', () => {
             removeFile(fileId, file.size);
         });
-        
+
         filePreviews.appendChild(preview);
         fileCount++;
         totalSize += file.size;
@@ -242,7 +298,7 @@ function showNotification(message, type = 'success') {
 
     notificationText.textContent = message;
     notificationContainer.className = `notification show ${type}`;
-    
+
     setTimeout(() => {
         notificationContainer.classList.remove('show');
     }, 3000);
@@ -257,9 +313,298 @@ function resetFileInput() {
     fileInput.value = '';
 }
 
-// --- INITIALIZATION & SIDENAV LOGIC ---
+// Function untuk BUKA Modal Edit
+function editLibrary(libraryId, currentName, event) {
+    // 1. Halang event bubbling (Wajib ada)
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+
+        // --- KOD TAMBAHAN: TUTUP DROPDOWN SECARA MANUAL ---
+        // Cari menu dropdown yang sedang terbuka (element <ul> parent kepada butang Edit)
+        const dropdownMenu = event.target.closest('.dropdown-menu');
+
+        if (dropdownMenu) {
+            // Buang class 'show' dari menu
+            dropdownMenu.classList.remove('show');
+
+            // Cari butang toggle (icon 3 titik) dan reset statusnya juga
+            // (Biasanya ia adalah sibling sebelum <ul>, atau dalam wrapper .dropdown)
+            const dropdownToggle = dropdownMenu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+            if (dropdownToggle) {
+                dropdownToggle.classList.remove('show');
+                dropdownToggle.setAttribute('aria-expanded', 'false');
+            }
+        }
+        // --- TAMAT KOD TAMBAHAN ---
+    }
+
+    // 2. Dapatkan elemen modal dan input
+    const inputEl = document.getElementById('editFolderNameInput');
+    const saveBtn = document.getElementById('saveEditFolderBtn');
+    const modalEl = document.getElementById('editFolderModal');
+
+    // 3. Masukkan nama asal ke dalam input field
+    if (inputEl) {
+        inputEl.value = currentName;
+        // UI Fix: Pastikan label input "naik" ke atas
+        inputEl.parentElement.classList.add('is-focused');
+    }
+
+    // 4. Simpan ID library pada butang Save
+    if (saveBtn) {
+        saveBtn.dataset.libraryId = libraryId;
+    }
+
+    // 5. Buka Modal
+    if (modalEl) {
+        const myModal = new bootstrap.Modal(modalEl);
+        myModal.show();
+    }
+}
+
+async function deleteLibrary(libraryId, event) {
+    // 1. Halang event bubbling & Tutup Dropdown (PENTING)
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+
+        // Manual close dropdown
+        const dropdownMenu = event.target.closest('.dropdown-menu');
+        if (dropdownMenu) {
+            dropdownMenu.classList.remove('show');
+            const dropdownToggle = dropdownMenu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+            if (dropdownToggle) {
+                dropdownToggle.classList.remove('show');
+                dropdownToggle.setAttribute('aria-expanded', 'false');
+            }
+        }
+    }
+
+    // 2. Confirmation Dialog
+    const confirmDelete = confirm("Are you sure you want to delete this folder? All files inside will be hidden.");
+    if (!confirmDelete) return;
+
+    try {
+        // 3. Panggil API Delete
+        const response = await fetch('/api/library/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ library_id: libraryId })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            // 4. Notification & Refresh Table
+            if (typeof showNotification === "function") {
+                showNotification("Folder deleted successfully", "success");
+            } else {
+                alert("Folder deleted successfully");
+            }
+
+            // Reload table untuk hilangkan folder yang dah delete
+            loadLibrarySummary();
+
+        } else {
+            alert("Failed to delete: " + (result.message || "Unknown error"));
+        }
+
+    } catch (error) {
+        console.error("Delete Error:", error);
+        alert("System error while deleting folder.");
+    }
+}
+
+async function viewReport(libraryId, event) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+        // ... (kod tutup dropdown sedia ada kekal sama) ...
+        const dropdownMenu = event.target.closest('.dropdown-menu');
+        if (dropdownMenu) {
+            dropdownMenu.classList.remove('show');
+            const toggle = dropdownMenu.parentElement.querySelector('[data-bs-toggle="dropdown"]');
+            if (toggle) toggle.classList.remove('show');
+        }
+    }
+
+    try {
+        const response = await fetch(`/api/library/report/${libraryId}`);
+        const result = await response.json();
+
+        const tableBody = document.getElementById('reportTableBody');
+        const noFileMsg = document.getElementById('noFileMessage');
+        const modalEl = document.getElementById('reportModal');
+        const downloadBtn = document.getElementById('downloadReportBtn'); // Ambil butang download
+
+        tableBody.innerHTML = '';
+
+        if (!result.hasFile) {
+            tableBody.style.display = 'none';
+            noFileMsg.style.display = 'block';
+            downloadBtn.disabled = true; // Disable button jika tiada data
+            currentReportData = []; // Kosongkan data
+        } else {
+            tableBody.style.display = 'table-row-group';
+            noFileMsg.style.display = 'none';
+            downloadBtn.disabled = false; // Enable button
+
+            // SIMPAN DATA KE VARIABLE GLOBAL (PENTING!)
+            currentReportData = result.data;
+
+            // Kita boleh set nama report (pilihan tambahan jika anda nak pass nama folder)
+            currentReportTitle = `Acknowledgement Report (Ref ID: ${libraryId})`;
+
+            result.data.forEach(user => {
+                // ... (kod generate table row HTML kekal sama macam sebelum ni) ...
+                // Copy paste logic table row anda di sini
+
+                // Contoh ringkas logic table row:
+                let statusBadge = user.status === 1
+                    ? `<span class="badge badge-sm bg-gradient-success">Acknowledged</span>`
+                    : `<span class="badge badge-sm bg-gradient-secondary">Pending</span>`;
+
+                let dateDisplay = '-';
+                if (user.status === 1 && user.ack_date) {
+                    const dateObj = new Date(user.ack_date);
+                    dateDisplay = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><h6 class="mb-0 text-sm px-2">${user.user_name}</h6></td>
+                    <td><p class="text-xs font-weight-bold mb-0">${user.role_name}</p></td>
+                    <td class="align-middle text-center text-sm">${statusBadge}</td>
+                    <td class="align-middle text-center"><span class="text-secondary text-xs font-weight-bold">${dateDisplay}</span></td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        const reportModal = new bootstrap.Modal(modalEl);
+        reportModal.show();
+
+    } catch (error) {
+        console.error("Report Error:", error);
+        alert("Failed to load report.");
+    }
+}
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Logic untuk butang Update dalam Edit Modal
+    document.getElementById('saveEditFolderBtn').addEventListener('click', async function () {
+        const saveBtn = this;
+        const libraryId = saveBtn.dataset.libraryId; // Ambil ID yang kita simpan tadi
+        const inputEl = document.getElementById('editFolderNameInput');
+        const newName = inputEl.value.trim();
+
+        // 1. Validasi
+        if (!newName) {
+            alert("Folder name cannot be empty.");
+            return;
+        }
+
+        // Ubah text butang untuk tunjuk progress
+        const originalText = saveBtn.textContent;
+        saveBtn.textContent = "Updating...";
+        saveBtn.disabled = true;
+
+        try {
+            // 2. Panggil API Update
+            const response = await fetch('/api/library/update', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: libraryId,
+                    name: newName
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // 3. Tutup Modal
+                const modalEl = document.getElementById('editFolderModal');
+                const modalInstance = bootstrap.Modal.getInstance(modalEl);
+                modalInstance.hide();
+
+                // 4. Refresh Table & Tunjuk Notification
+                showNotification("Folder updated successfully", "success");
+                loadLibrarySummary();
+            } else {
+                alert("Failed to update: " + (result.message || "Unknown error"));
+            }
+
+        } catch (error) {
+            console.error("Update Error:", error);
+            alert("System error while updating folder.");
+        } finally {
+            // Reset butang
+            saveBtn.textContent = originalText;
+            saveBtn.disabled = false;
+        }
+    });
+
+    // Event Listener untuk Download PDF
+    document.getElementById('downloadReportBtn').addEventListener('click', function () {
+        // Pastikan library jsPDF dah load
+        if (!window.jspdf) {
+            alert("PDF Library not loaded properly.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        // 1. Tajuk PDF
+        doc.setFontSize(18);
+        doc.text("User Acknowledgement Report", 14, 20);
+
+        doc.setFontSize(11);
+        doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 28);
+
+        // 2. Format Data untuk Table PDF
+        // Kita map data dari variable global 'currentReportData' kepada format array
+        const tableRows = currentReportData.map(user => {
+            let dateDisplay = '-';
+            if (user.status === 1 && user.ack_date) {
+                const dateObj = new Date(user.ack_date);
+                dateDisplay = dateObj.toLocaleDateString() + ' ' + dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+
+            return [
+                user.user_name,       // Column 1: Name
+                user.role_name,       // Column 2: Role
+                user.status === 1 ? 'Acknowledged' : 'Pending', // Column 3: Status (Text)
+                dateDisplay           // Column 4: Date
+            ];
+        });
+
+        // 3. Generate Table menggunakan plugin 'autoTable'
+        doc.autoTable({
+            startY: 35,
+            head: [['Member Name', 'Role', 'Status', 'Date']], // Header Table
+            body: tableRows, // Isi Table
+            theme: 'grid',   // 'striped', 'grid', atau 'plain'
+            headStyles: { fillColor: [66, 66, 66] }, // Warna header (Dark Grey)
+            styles: { fontSize: 10 },
+            // Custom style untuk highlight status
+            didParseCell: function (data) {
+                if (data.section === 'body' && data.column.index === 2) {
+                    if (data.cell.raw === 'Pending') {
+                        data.cell.styles.textColor = [255, 0, 0]; // Merah untuk Pending
+                    } else {
+                        data.cell.styles.textColor = [0, 128, 0]; // Hijau untuk Acknowledged
+                    }
+                }
+            }
+        });
+
+        // 4. Save file
+        doc.save(`Acknowledgement_Report_${Date.now()}.pdf`);
+    });
+
     // Jalankan load data dari API
     loadLibrarySummary();
 
@@ -288,11 +633,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Save Folder Logic
     const saveFolderBtn = document.getElementById('saveFolderBtn');
     const folderNameInput = document.getElementById('folderNameInput');
+    const userData = JSON.parse(localStorage.getItem("user") || "{}");
+    const userId = userData.id;
+    const userRoleId = userData.role;
 
     saveFolderBtn?.addEventListener('click', async () => {
         const folderName = folderNameInput.value.trim();
-        const userData = JSON.parse(localStorage.getItem("user") || "{}");
-        const userId = userData.id || 1; 
 
         if (!folderName) {
             alert("Please enter a folder name.");

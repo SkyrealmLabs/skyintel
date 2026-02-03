@@ -75,14 +75,41 @@ async function loadFiles(libraryId, folderType) {
             // Generate HTML Card
             const cardHtml = `
                 <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6 mb-4">
-                    <div class="card pdf-card h-100 text-center clickable-card" 
-                         data-bs-toggle="modal"
-                         data-bs-target="#pdfViewerModal"
-                         data-pdf="${fileUrl}"
-                         data-filename="${file.file_name}"
-                         data-fileid="${file.id}"
-                         data-acknowledged="${file.is_acknowledged}">
-                        <div class="card-body d-flex flex-column align-items-center justify-content-center">
+                    <div class="card pdf-card h-100 text-center position-relative" 
+                        id="file-card-${file.id}" 
+                        style="overflow: visible;">
+                        
+                        <div class="dropdown position-absolute top-0 end-0 mt-2 me-2" style="z-index: 10;">
+                            <button class="btn btn-link text-secondary p-0 m-0" 
+                                    type="button" 
+                                    id="dropdownMenu${file.id}" 
+                                    data-bs-toggle="dropdown" 
+                                    aria-expanded="false">
+                                <i class="material-icons">more_vert</i>
+                            </button>
+                            
+                            <ul class="dropdown-menu dropdown-menu-end" 
+                                aria-labelledby="dropdownMenu${file.id}" 
+                                style="z-index: 9999;">
+                                <li>
+                                    <a class="dropdown-item text-danger" 
+                                    href="javascript:void(0)" 
+                                    onclick="deleteFile(${file.id})">
+                                    <i class="material-icons text-sm me-2">delete</i> Delete
+                                    </a>
+                                </li>
+                            </ul>
+                        </div>
+
+                        <div class="card-body d-flex flex-column align-items-center justify-content-center pt-4 clickable-card"
+                            style="cursor: pointer;"
+                            data-bs-toggle="modal"
+                            data-bs-target="#pdfViewerModal"
+                            data-pdf="${fileUrl}"
+                            data-filename="${file.file_name}"
+                            data-fileid="${file.id}"
+                            data-acknowledged="${file.is_acknowledged}">
+                            
                             <i class="material-icons text-danger mb-2" style="font-size:48px;">picture_as_pdf</i>
                             <h6 class="font-weight-bold text-truncate w-100 mb-1" title="${file.file_name}">${file.file_name}</h6>
                             <p class="text-muted text-xs mb-0">${file.author || 'System'}</p>
@@ -92,6 +119,7 @@ async function loadFiles(libraryId, folderType) {
                                 ${badgeHtml}
                             </div>
                         </div>
+                        
                     </div>
                 </div>
             `;
@@ -213,6 +241,57 @@ async function processAcknowledgement(fileId, btn, checkbox) {
         alert("Server error.");
         btn.textContent = originalText;
         btn.disabled = false;
+    }
+}
+
+// Function Delete File API
+async function deleteFile(fileId) {
+    
+    const confirmAction = confirm("Are you sure you want to delete this file?");
+    if (!confirmAction) return;
+
+    try {
+        // 2. Panggil API Delete
+        const response = await fetch('/api/library/files/delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ file_id: fileId })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            
+            const cardElement = document.getElementById(`file-card-${fileId}`);
+            
+            if (cardElement) {
+                const columnElement = cardElement.closest('.col-xl-3'); 
+                if (columnElement) {
+                    columnElement.remove();
+                } else {
+                    cardElement.remove();
+                }
+            }
+            
+            // Optional: Tunjuk alert kecil atau toast
+            alert("File deleted successfully."); 
+            
+            // Cek jika container kosong selepas delete
+            const container = document.getElementById('filesContainer');
+            if (container && container.children.length === 0) {
+                container.innerHTML = `<div class="col-12 text-center mt-5"><p class="text-muted">No files found.</p></div>`;
+            }
+
+        } else {
+            // 4. Jika gagal (contoh: server error)
+            alert("Failed to delete: " + (result.message || "Unknown error"));
+        }
+
+    } catch (error) {
+        console.error("Delete Error:", error);
+        alert("System error. Please try again later.");
     }
 }
 

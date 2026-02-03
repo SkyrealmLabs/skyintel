@@ -22,12 +22,12 @@ const dronePreviousPositions = {};
 const locationLegend = L.control({ position: 'bottomright' });
 const handledFatalStates = new Set();
 const conflictedDrones = new Set();
-const objectDetectionMarkers = new Map(); 
-const droneMarkers = {}; 
+const objectDetectionMarkers = new Map();
+const droneMarkers = {};
 
 // <<< OPTIMIZATION: DOM CACHE >>>
 // Stores references to specific DOM elements to prevent expensive lookups
-const droneUICache = new Map(); 
+const droneUICache = new Map();
 
 const tokenKey = "ePRvptm58jaEIhCQW8I7JMZyAzkT6Ys9";
 
@@ -47,9 +47,9 @@ style.innerHTML = `
     }
     /* Fatal Error Pulsing Animation */
     @keyframes pulse-red {
-        0% { filter: drop-shadow(0 0 0 rgba(255, 0, 0, 0.7)); transform: scale(1); }
-        50% { filter: drop-shadow(0 0 15px rgba(255, 0, 0, 1)); transform: scale(1.2); }
-        100% { filter: drop-shadow(0 0 0 rgba(255, 0, 0, 0.7)); transform: scale(1); }
+        0% { filter: drop-shadow(0 0 0 rgba(255, 0, 0, 0.7)); }
+        50% { filter: drop-shadow(0 0 15px rgba(255, 0, 0, 1)); }
+        100% { filter: drop-shadow(0 0 0 rgba(255, 0, 0, 0.7)); }
     }
     .fatal-drone-icon {
         animation: pulse-red 1s infinite; /* Flashes every 1 second */
@@ -65,7 +65,7 @@ document.head.appendChild(style);
 document.addEventListener("DOMContentLoaded", function () {
     // 1. Map Setup
     var map = L.map('map').setView([5.15233, 100.49557], 18);
-    
+
     // Check for Google Mutant Plugin
     if (L.gridLayer.googleMutant) {
         var googleRoadmap = L.gridLayer.googleMutant({
@@ -85,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 return response.json();
             })
             .then(data => {
-                L.geoJSON(data, { 
+                L.geoJSON(data, {
                     style: { color: "#e60000", weight: 2, opacity: 0.8, fillColor: "#ff4d4d", fillOpacity: 0.4 },
                     onEachFeature: (feature, layer) => layer.bindPopup('<strong>Obstacle Area</strong>')
                 }).addTo(map);
@@ -119,12 +119,14 @@ document.addEventListener("DOMContentLoaded", function () {
         options: {
             iconSize: [40, 40],
             iconAnchor: [20, 20],
-            className: 'smooth-drone-icon' 
+            className: 'smooth-drone-icon'
         }
     });
 
     var greenDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-green.png' });
     var redDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-red.png' });
+    var orangeDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-orange.png' });
+    var blueDroneIcon = new flightIcon({ iconUrl: 'assets/img/icons/drone/drone-blue.png' });
 
     const targetIcons = {
         pickup: L.icon({ iconUrl: 'assets/img/icons/drone/location-pin-red.png', iconSize: [25, 41], iconAnchor: [12, 41] }),
@@ -134,12 +136,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // 5. Event Listeners (Delegated)
     function setupEventListeners() {
-        document.body.addEventListener('click', function(e) {
+        document.body.addEventListener('click', function (e) {
             // Handle Recenter Click
             if (e.target.closest('.recenter')) {
                 const icon = e.target.closest('.recenter');
                 const droneId = parseInt(icon.dataset.droneId, 10);
-                
+
                 const wasActive = icon.classList.contains('active');
                 document.querySelectorAll('.recenter').forEach(el => {
                     el.classList.remove('active');
@@ -163,7 +165,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         // HMB Toggle Listener
-        document.addEventListener('change', function(e) {
+        document.addEventListener('change', function (e) {
             if (e.target.name === 'data_mode') {
                 isHMBData = !e.target.checked;
             }
@@ -175,7 +177,7 @@ document.addEventListener("DOMContentLoaded", function () {
     // ==========================================
     // ===       OPTIMIZED DATA FETCH LOOP    ===
     // ==========================================
-    
+
     async function runDataLoop() {
         const droneApiURL = 'https://gcs.zulsyah.com/rpi_drone_feedback?token=' + tokenKey;
         const missionApiURL = 'https://gcs.zulsyah.com/active_mission_list?token=' + tokenKey;
@@ -194,9 +196,9 @@ document.addEventListener("DOMContentLoaded", function () {
             const missionData = results[1].status === 'fulfilled' ? results[1].value : [];
             const hmbData = results[2].status === 'fulfilled' ? results[2].value : {};
 
-            updateDroneState(droneData); 
-            updateMapElements(droneData); 
-            updateUserInterface(); 
+            updateDroneState(droneData);
+            updateMapElements(droneData);
+            updateUserInterface();
             updateMissionDetails(missionData);
 
         } catch (error) {
@@ -204,7 +206,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         // Recursive call: waits for previous finish before starting new one (avoids stacking)
-        setTimeout(runDataLoop, 500); 
+        setTimeout(runDataLoop, 500);
     }
 
     // Start the loop
@@ -231,7 +233,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     object_detection: []
                 };
                 simulatedDroneArr.push(droneToUpdate);
-                
+
                 // Initialize Marker
                 const newMarker = L.marker([2.9100729431148187, 101.65520813904638], { icon: greenDroneIcon });
                 newMarker.addTo(map).bindPopup(`<div class="droneInfo">Drone ID : ${liveDrone.id}</div>`);
@@ -243,6 +245,7 @@ document.addEventListener("DOMContentLoaded", function () {
             droneToUpdate.eta = liveDrone.eta;
             droneToUpdate.connectivity = liveDrone.connectivity;
             droneToUpdate.object_detection = liveDrone.object_detection;
+            droneToUpdate.healthState = liveDrone.healthState || {};
         });
     }
 
@@ -260,21 +263,21 @@ document.addEventListener("DOMContentLoaded", function () {
             if (marker) {
                 const newLatLng = L.latLng(drone.feedback.currentPosition[0], drone.feedback.currentPosition[1]);
                 marker.setLatLng(newLatLng); // CSS transition handles smoothing
-                
+
                 if (typeof marker.setRotationAngle === 'function') {
                     marker.setRotationAngle(drone.feedback.currentHeading);
                 }
 
                 // >>> UPDATED ICON PRIORITY LOGIC <<<
                 const isFatal = drone.feedback.fsmState === 'Fatal error';
-                
+
                 if (isFatal) {
-                    // Priority 1: Fatal Error (Red + Pulsing)
-                    marker.setIcon(redDroneIcon);
-                    if (marker._icon) marker._icon.classList.add('fatal-drone-icon'); 
+                    // Priority 1: Fatal Error
+                    marker.setIcon(redDroneIcon); // Pastikan ini greenDroneIcon, BUKAN redDroneIcon
+                    if (marker._icon) marker._icon.classList.add('fatal-drone-icon');
                 } else if (selectedDroneID === drone.id) {
                     // Priority 2: Selected (Red, no pulse)
-                    marker.setIcon(redDroneIcon);
+                    marker.setIcon(blueDroneIcon);
                     if (!userZooming) map.setView(newLatLng);
                     if (marker._icon) marker._icon.classList.remove('fatal-drone-icon');
                 } else {
@@ -297,7 +300,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     if (!obj?.object_id || !obj?.position || obj.position.length < 2) return;
                     const objectKey = `${drone.id}-${obj.object_id}`;
                     allSeenObjectKeys.add(objectKey);
-                    
+
                     const objPos = L.latLng(obj.position[0], obj.position[1]);
                     if (objectDetectionMarkers.has(objectKey)) {
                         objectDetectionMarkers.get(objectKey).setLatLng(objPos);
@@ -329,7 +332,7 @@ document.addEventListener("DOMContentLoaded", function () {
         // We iterate backwards to safely remove items from the array
         for (let i = simulatedDroneArr.length - 1; i >= 0; i--) {
             const drone = simulatedDroneArr[i];
-            
+
             // If the drone is NOT in the latest live data
             if (!liveDroneIds.has(drone.id)) {
                 if (droneMarkers[drone.id]) {
@@ -353,7 +356,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function updateUserInterface() {
         const query = document.getElementById("searchQueryInput").value.trim().toLowerCase();
-        
+
         // Filter Data
         const filteredDrones = simulatedDroneArr.filter(drone => {
             if (drone.feedback.connectionStatus !== 'Connected') return false;
@@ -386,7 +389,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let noDronesMsg = droneDataContainer.querySelector('.no-drones-message');
         if (filteredDrones.length === 0) {
             if (!noDronesMsg) {
-                droneDataContainer.insertAdjacentHTML('beforeend', 
+                droneDataContainer.insertAdjacentHTML('beforeend',
                     `<div class="no-drones-message" style="text-align: center; padding: 20px; color: #888;">No online drones found.</div>`);
             }
         } else if (noDronesMsg) {
@@ -410,6 +413,8 @@ document.addEventListener("DOMContentLoaded", function () {
                         Drone ${drone.id}
                     </span>
                     <span class="ms-auto d-flex align-items-center gap-2">
+                         <i id="health-btn-${drone.id}" class="bi bi-info-circle-fill health-icon-btn text-success" 
+                           onclick="toggleHealthPanel(${drone.id}, event)"></i>
                         <div id="error-state-${drone.id}"></div>
                         <div class="signal-bar" id="signal-bar-${drone.id}"></div>
                         <i class="recenter bi bi-cursor-fill inactive" data-drone-id="${drone.id}"></i>
@@ -418,7 +423,6 @@ document.addEventListener("DOMContentLoaded", function () {
                             <input type="checkbox" name="data_mode" id="data_mode-${drone.id}" value="1" data-drone-id="${drone.id}">
                             <label for="data_mode-${drone.id}" data-on="HMB" data-off="RPI" class="btn-color-mode-switch-inner"></label>
                         </label>
-                        
                     </span>
                 </div>
             </h6>
@@ -433,8 +437,11 @@ document.addEventListener("DOMContentLoaded", function () {
                     <p><strong>Current Speed:</strong> <span id="spd-${drone.id}"></span> m/s</p>
                     <p><strong>Heading:</strong> <span id="head-${drone.id}"></span>°</p>
                     <p><strong>Distance to Target:</strong> <span id="dist-${drone.id}"></span> m</p>
+                    
                     <p><strong>Battery Level:</strong> <span id="batt-${drone.id}"></span> %</p>
-                    <p><strong>ETA Pickup:</strong> <span id="eta-p-${drone.id}"></span></p>
+                    
+                    <p><strong>Battery Health:</strong> <span id="batt-soh-${drone.id}"></span></p>
+                    <hr class="horizontal dark my-1" style="border-top: 1px dashed #ccc;"> <p><strong>ETA Pickup:</strong> <span id="eta-p-${drone.id}"></span></p>
                     <p><strong>ETA Dropoff:</strong> <span id="eta-d-${drone.id}"></span></p>
                     <p><strong>ETA Home:</strong> <span id="eta-h-${drone.id}"></span></p>
                     <p><strong>Signal:</strong> <span id="sig-txt-${drone.id}"></span></p>
@@ -455,6 +462,7 @@ document.addEventListener("DOMContentLoaded", function () {
             head: div.querySelector(`#head-${drone.id}`),
             dist: div.querySelector(`#dist-${drone.id}`),
             batt: div.querySelector(`#batt-${drone.id}`),
+            battSOH: div.querySelector(`#batt-soh-${drone.id}`),
             etaP: div.querySelector(`#eta-p-${drone.id}`),
             etaD: div.querySelector(`#eta-d-${drone.id}`),
             etaH: div.querySelector(`#eta-h-${drone.id}`),
@@ -471,25 +479,50 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const f = drone.feedback;
         const eta = drone.eta;
-        
-        // Update textContent only (Very fast)
+        // Ambil data healthState (pastikan wujud)
+        const health = drone.healthState || {};
+
+        // Update textContent bias (pantas)
         cache.connStatus.textContent = f.connectionStatus;
         cache.ts.textContent = convertToReadableTimestamp(f.droneTimestamp);
         cache.fsm.textContent = f.fsmState;
         cache.alt.textContent = f.currentAltitude;
-        cache.pos.textContent = `[${f.currentPosition.map(n=>n.toFixed(5)).join(", ")}]`;
+        cache.pos.textContent = `[${f.currentPosition.map(n => n.toFixed(5)).join(", ")}]`;
         cache.spd.textContent = f.currentSpeed.toFixed(2);
         cache.head.textContent = f.currentHeading.toFixed(2);
         cache.dist.textContent = f.distToTarget.toFixed(1);
         cache.batt.textContent = f.batteryLevel.toFixed(1);
-        
+
+        // ==========================================
+        // ===      LOGIK BATTERY HEALTH SOH      ===
+        // ==========================================
+        const sohValue = health.batterySOH || "N/A";
+        let dotClass = "dot-na";
+        let textClass = "";
+
+        // Tentukan warna berdasarkan string SOH
+        if (sohValue === "Healthy" || sohValue === "Good") {
+            dotClass = "dot-healthy";
+            textClass = "text-healthy";
+        } else if (sohValue === "Aging") {
+            dotClass = "dot-aging";
+            textClass = "text-aging";
+        } else if (sohValue === "Degraded" || sohValue === "Bad") {
+            dotClass = "dot-degraded";
+            textClass = "text-degraded";
+        }
+
+        // Render HTML Dot + Teks
+        cache.battSOH.innerHTML = `<span class="status-dot ${dotClass}"></span><span class="${textClass}">${sohValue}</span>`;
+        // ==========================================
+
         cache.etaP.textContent = timeFormat(eta.pickup);
         cache.etaD.textContent = timeFormat(eta.dropoff);
         cache.etaH.textContent = timeFormat(eta.rtl);
 
         const rsrp = getRSRPQuality(drone.connectivity?.lteRSRP);
         cache.sigTxt.innerHTML = `<span style="color:${rsrp.color}; font-weight:bold;">${rsrp.label}</span>`;
-        
+
         const newSignalHTML = generateSignalBars(rsrp.level);
         if (cache.signalBar.innerHTML !== newSignalHTML) {
             cache.signalBar.innerHTML = newSignalHTML;
@@ -509,19 +542,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
         // --- RTL Button ---
         if (hasActiveMission && !cache.rtlBtnContainer.hasChildNodes()) {
-             const rtlBtn = document.createElement('button');
-             rtlBtn.textContent = 'RTL';
-             rtlBtn.className = 'btn btn-warning w-100 justify-content-center';
-             rtlBtn.onclick = () => sendRTLCommandToDrone(displayId);
-             cache.rtlBtnContainer.innerHTML = ''; 
-             cache.rtlBtnContainer.appendChild(rtlBtn);
+            const rtlBtn = document.createElement('button');
+            rtlBtn.textContent = 'RTL';
+            rtlBtn.className = 'btn btn-warning w-100 justify-content-center';
+            rtlBtn.onclick = () => sendRTLCommandToDrone(displayId);
+            cache.rtlBtnContainer.innerHTML = '';
+            cache.rtlBtnContainer.appendChild(rtlBtn);
         } else if (!hasActiveMission) {
             cache.rtlBtnContainer.innerHTML = '';
         }
 
         // --- ERROR ICONS (Fatal & Conflict) ---
         let errorIconsHTML = '';
-        
+
         // 1. FATAL ICON
         if (isFatal) {
             errorIconsHTML += `<i class="bi bi-exclamation-triangle-fill text-danger fs-5 blinking-icon me-2" title="FATAL ERROR"></i>`;
@@ -531,7 +564,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (isDaaConflict) {
             if (!conflictedDrones.has(droneId)) {
                 showModernToast('warning', 'Warning!', `Forward DAA conflict: Drone ${droneId}`);
-                
+
                 const proceedBtn = document.createElement('button');
                 proceedBtn.textContent = 'Proceed';
                 proceedBtn.className = 'btn btn-info w-100 justify-content-center mt-1';
@@ -543,16 +576,16 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             errorIconsHTML += `<i class="bi bi-exclamation-triangle-fill text-warning fs-5 blinking-icon me-2" title="DAA Conflict"></i>`;
         } else {
-             if (conflictedDrones.has(droneId)) {
+            if (conflictedDrones.has(droneId)) {
                 const streamContainer = document.getElementById(`drone-stream-container-${displayId}`);
                 if (streamContainer) streamContainer.remove();
                 conflictedDrones.delete(droneId);
-                fetch(`https://gcs.zulsyah.com/disconnect_drone_camera/${displayId}?token=${tokenKey}`).catch(e=>console.error(e));
+                fetch(`https://gcs.zulsyah.com/disconnect_drone_camera/${displayId}?token=${tokenKey}`).catch(e => console.error(e));
             }
         }
 
         cache.errorState.innerHTML = errorIconsHTML;
-        
+
         // --- AUDIO ALERT ---
         if ((conflictedDrones.size > 0 || handledFatalStates.size > 0) && !warningAudio) {
             warningAudio = new Audio('../assets/audio/warning-alert.mp3');
@@ -561,6 +594,27 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (conflictedDrones.size === 0 && handledFatalStates.size === 0 && warningAudio) {
             warningAudio.pause();
             warningAudio = null;
+        }
+
+        // 1. Dapatkan elemen butang info
+        const infoBtn = document.getElementById(`health-btn-${drone.id}`);
+
+        if (infoBtn) {
+            const overallStatus = calculateOverallHealth(drone.healthState);
+
+            infoBtn.className = "bi health-icon-btn";
+
+            if (overallStatus === 'error') {
+                // Merah & Pangkah
+                infoBtn.classList.add('bi-x-circle-fill', 'text-danger');
+            }
+            else if (overallStatus === 'warning') {
+                // Kuning & Segitiga Amaran
+                infoBtn.classList.add('bi-exclamation-triangle-fill', 'text-warning');
+            }
+            else {
+                infoBtn.classList.add('bi-check-circle-fill', 'text-success');
+            }
         }
     }
 
@@ -572,11 +626,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const targetPos = drone.feedback.targetPosition;
         if (targetPos && targetPos[0] !== 0) {
             if (!droneTargetStates[drone.id]) droneTargetStates[drone.id] = 'pickup';
-            
+
             const prevPos = dronePreviousPositions[drone.id];
             if (!prevPos || prevPos[0] !== targetPos[0] || prevPos[1] !== targetPos[1]) {
                 dronePreviousPositions[drone.id] = targetPos;
-                
+
                 let type = droneTargetStates[drone.id];
                 if (type === 'pickup') droneTargetStates[drone.id] = 'dropoff';
                 else if (type === 'dropoff') droneTargetStates[drone.id] = 'home';
@@ -604,28 +658,28 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function handleFatalError(drone) {
         if (handledFatalStates.has(drone.id)) return;
-        
+
         console.log(`Fatal Error Drone ${drone.id}`);
         const pos = drone.feedback.currentPosition;
         const alt = drone.feedback.currentAltitude;
         const heading = drone.feedback.currentHeading;
-        const speed = drone.feedback.currentSpeed; 
+        const speed = drone.feedback.currentSpeed;
 
         // 1. Safety Perimeter
-        const safetyRadius = alt * 5; 
-        L.circle(pos, { 
-            color: 'red', 
-            fillColor: '#f03', 
-            fillOpacity: 0.1, 
+        const safetyRadius = alt * 5;
+        L.circle(pos, {
+            color: 'red',
+            fillColor: '#f03',
+            fillOpacity: 0.1,
             weight: 1,
-            radius: safetyRadius 
+            radius: safetyRadius
         }).addTo(map);
 
         // 2. Kinematic Distance (Speed * Time)
         const estimatedSinkRate = 3.0; // Fixed Wing Sink Rate assumption
-        const timeToImpact = alt / estimatedSinkRate; 
+        const timeToImpact = alt / estimatedSinkRate;
         let estimatedDistance = (speed > 1) ? (speed * timeToImpact) : (alt * 4.0);
-        if(estimatedDistance > safetyRadius) estimatedDistance = safetyRadius;
+        if (estimatedDistance > safetyRadius) estimatedDistance = safetyRadius;
 
         // 3. Project Crash Coordinate
         const earthRadius = 6371000;
@@ -635,18 +689,18 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const newLatRad = Math.asin(Math.sin(latRad) * Math.cos(estimatedDistance / earthRadius) +
             Math.cos(latRad) * Math.sin(estimatedDistance / earthRadius) * Math.cos(headingRad));
-        
+
         const newLngRad = lngRad + Math.atan2(Math.sin(headingRad) * Math.sin(estimatedDistance / earthRadius) * Math.cos(latRad),
             Math.cos(estimatedDistance / earthRadius) - Math.sin(latRad) * Math.sin(newLatRad));
 
         const crashPos = [newLatRad * (180 / Math.PI), newLngRad * (180 / Math.PI)];
 
         // 4. Trajectory Line (Orange Dashed)
-        L.polyline([pos, crashPos], { 
-            color: 'orange', 
-            weight: 4, 
-            dashArray: '10, 10', 
-            opacity: 0.9 
+        L.polyline([pos, crashPos], {
+            color: 'orange',
+            weight: 4,
+            dashArray: '10, 10',
+            opacity: 0.9
         }).addTo(map);
 
         // 5. Crash Marker
@@ -689,10 +743,10 @@ document.addEventListener("DOMContentLoaded", function () {
     async function updateDroneHistoricalPath(drone) {
         try {
             const res = await fetch(`https://gcs.zulsyah.com/drone_historical_path/${drone.id}?token=${tokenKey}`);
-            if(!res.ok) return;
+            if (!res.ok) return;
             const pathData = await res.json();
             if (!Array.isArray(pathData) || pathData.length < 2) return;
-            
+
             const validPath = pathData.filter(p => p[0] !== 0);
             if (droneMarkers[drone.id].historicalPath) {
                 droneMarkers[drone.id].historicalPath.setLatLngs(validPath);
@@ -736,43 +790,62 @@ document.addEventListener("DOMContentLoaded", function () {
 
     function sendRTLCommandToDrone(id) {
         fetch('https://gcs.zulsyah.com/request_rtl?token=' + tokenKey, {
-            method: 'POST', body: JSON.stringify({ drone_id: id }), headers: {'Content-Type': 'application/json'}
-        }).then(()=>showModernToast('success', 'Success', `RTL sent to Drone ${id}`));
+            method: 'POST', body: JSON.stringify({ drone_id: id }), headers: { 'Content-Type': 'application/json' }
+        }).then(() => showModernToast('success', 'Success', `RTL sent to Drone ${id}`));
     }
 
     function proceedWithMission(id) {
         fetch('https://gcs.zulsyah.com/resume_mission?token=' + tokenKey, {
-            method: 'POST', body: JSON.stringify({ drone_id: id }), headers: {'Content-Type': 'application/json'}
-        }).then(()=>showModernToast('info', 'Info', `Mission Resumed Drone ${id}`));
+            method: 'POST', body: JSON.stringify({ drone_id: id }), headers: { 'Content-Type': 'application/json' }
+        }).then(() => showModernToast('info', 'Info', `Mission Resumed Drone ${id}`));
     }
 
     function requestDroneVideoStream(droneId, container) {
         if (!container) return;
-        container.innerHTML = ''; 
-        
+        container.innerHTML = '';
+
         const wrapper = document.createElement('div');
         wrapper.id = `drone-stream-container-${droneId}`;
         wrapper.style.cssText = "position: relative; width: 420px; height: 240px; border: 2px solid #ccc; background: #000; z-index: 10000;";
-        
+
         const img = document.createElement('img');
         img.src = `https://gcs.zulsyah.com/drone_camera/${droneId}?token=${tokenKey}`;
         img.style.cssText = "width: 100%; height: 100%; object-fit: cover;";
-        
+
         const close = document.createElement('i');
         close.className = 'bi bi-x-circle-fill';
         close.style.cssText = "position: absolute; top: 5px; right: 5px; color: white; cursor: pointer; font-size: 20px;";
         close.onclick = () => {
-             wrapper.remove();
-             fetch(`https://gcs.zulsyah.com/disconnect_drone_camera/${droneId}?token=${tokenKey}`);
+            wrapper.remove();
+            fetch(`https://gcs.zulsyah.com/disconnect_drone_camera/${droneId}?token=${tokenKey}`);
         };
 
         wrapper.append(img, close);
         container.appendChild(wrapper);
     }
-    
+
+    function calculateOverallHealth(healthState) {
+        if (!healthState) return 'good'; // Default Good jika tiada data
+
+        const values = Object.values(healthState).map(v => v.toLowerCase());
+
+        // 1. Priority TERTINGGI: Danger/Error
+        if (values.includes('error') || values.includes('danger') || values.includes('fail')) {
+            return 'error';
+        }
+
+        // 2. Priority SEDERHANA: Warning
+        if (values.includes('warning')) {
+            return 'warning';
+        }
+
+        // 3. Jika tiada isu
+        return 'good';
+    }
+
     function updateMissionDetails(missionData) {
         if (!Array.isArray(missionData)) return;
-        
+
         missionData.forEach(m => {
             if (m.mission_complete) {
                 if (drawnWaypoints.has(m.mission_id)) {
@@ -781,7 +854,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 }
                 return;
             }
-            if (drawnWaypoints.has(m.mission_id)) return; 
+            if (drawnWaypoints.has(m.mission_id)) return;
 
             const layers = [];
             const draw = (coords, col) => {
@@ -799,10 +872,10 @@ document.addEventListener("DOMContentLoaded", function () {
     let userZooming = false;
     map.on('zoomstart', () => userZooming = true);
     map.on('zoomend', () => userZooming = false);
-    
+
     function showModernToast(type, title, message) {
         const container = document.getElementById('modern-toast-container');
-        if(!container) return;
+        if (!container) return;
         const toast = document.createElement('div');
         toast.className = `modern-toast toast-${type}`;
         toast.innerHTML = `<div class="toast-content"><strong>${title}</strong><br>${message}</div>`;
@@ -811,7 +884,131 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     const searchInput = document.getElementById("searchQueryInput");
-    if(searchInput) {
+    if (searchInput) {
         searchInput.addEventListener("input", updateUserInterface);
     }
+
+    // 1. Data Mock untuk simulasi Health Check (Dikemaskini dengan Good/Warning/Error)
+    function getHealthStatus(droneId) {
+        // Helper function untuk menjana status secara rawak
+        // Kebarangkalian: 70% Good, 20% Warning, 10% Error
+        function getRandomStatus() {
+            const rand = Math.random();
+            if (rand > 0.3) return "Good";
+            if (rand > 0.1) return "Warning";
+            return "Error";
+        }
+
+        // Kita tetapkan beberapa sistem kritikal sentiasa "Good" untuk demo yang kemas,
+        // manakala sensor lain berubah-ubah.
+        return [
+            { name: "Mavlink Communication", status: "Good" },
+            { name: "Left LIDAR", status: getRandomStatus() },
+            { name: "Main LIDAR", status: "Good" },
+            { name: "Right LIDAR", status: getRandomStatus() },
+            { name: "Forward Camera", status: "Good" },
+            { name: "Downward Camera", status: getRandomStatus() },
+            { name: "Winch Module", status: "Good" },
+            { name: "PRS Module", status: getRandomStatus() },
+            { name: "Health Monitoring Module", status: "Good" }
+        ];
+    }
+
+    // 2. Fungsi untuk Render Icon berdasarkan status (Good/Warning/Error)
+    function getStatusIcon(status) {
+        if (!status) return `<span>-</span>`; // Handle jika data tiada
+
+        const s = status.toLowerCase();
+
+        // Tambah check untuk 'healthy'
+        if (s === 'good' || s === 'ok' || s === 'healthy') {
+            return `<i class="bi bi-check-circle-fill status-icon ok" style="color: #4CAF50; font-size: 20px;" title="${status}"></i>`;
+        } else if (s === 'warning') {
+            return `<i class="bi bi-exclamation-triangle-fill status-icon warning" style="color: #FFC107; font-size: 20px;" title="${status}"></i>`;
+        } else if (s === 'error') {
+            return `<i class="bi bi-x-circle-fill status-icon error" style="color: #F44336; font-size: 20px;" title="${status}"></i>`;
+        } else {
+            // Default untuk status lain (N/A dll)
+            return `<span style="font-size: 12px; color: #777;">${status}</span>`;
+        }
+    }
+
+    // 3. Fungsi Utama: Toggle Panel
+    window.toggleHealthPanel = function (droneId, event) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+        const panel = document.getElementById('health-side-panel');
+        const contentDiv = document.getElementById('health-panel-content');
+
+        // Toggle behavior: Tutup jika klik drone yang sama
+        if (panel.classList.contains('open') && panel.dataset.activeDrone == droneId) {
+            closeHealthPanel();
+            return;
+        }
+
+        // 1. CARI DRONE DALAM ARRAY
+        const drone = simulatedDroneArr.find(d => d.id === droneId);
+
+        // Safety check jika drone atau healthState tiada
+        const health = (drone && drone.healthState) ? drone.healthState : {};
+
+        // 2. MAPPING: Tambah property 'icon' untuk setiap item
+        const healthMapping = [
+            { key: 'mavlink', label: 'Mavlink Communication', icon: 'bi-hdd-network' },
+            { key: 'leftLidar', label: 'Left LIDAR', icon: 'bi-arrow-left-circle' },
+            { key: 'mainLidar', label: 'Main LIDAR', icon: 'bi-bullseye' },
+            { key: 'rightLidar', label: 'Right LIDAR', icon: 'bi-arrow-right-circle' },
+            { key: 'forwardCamera', label: 'Forward Camera', icon: 'bi-camera-video' },
+            { key: 'downwardCamera', label: 'Downward Camera', icon: 'bi-camera-video-fill' },
+            { key: 'winchModule', label: 'Winch Module', icon: 'bi-gear-wide-connected' },
+            { key: 'PRSmodule', label: 'PRS Module', icon: 'bi-shield-check' }, // Parachute/Safety
+            { key: 'HMMmodule', label: 'Health Monitoring', icon: 'bi-heart-pulse' },
+            { key: 'batterySOH', label: 'Battery SOH', icon: 'bi-battery-half' }
+        ];
+
+        let htmlContent = `<div class="p-3 bg-light border-bottom">
+                            <h6 class="m-0 text-primary">Drone ${droneId} Diagnostics</h6>
+                        </div>`;
+
+        // 3. LOOP MAPPING UNTUK GENERATE LIST
+        healthMapping.forEach(item => {
+            // Ambil status dari object health, default ke 'N/A' jika tiada
+            const currentStatus = health[item.key] || "N/A";
+
+            htmlContent += `
+                <div class="health-item">
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${item.icon} me-3 text-secondary" style="font-size: 1.1rem;"></i>
+                        <span>${item.label}</span>
+                    </div>
+                    
+                    ${getStatusIcon(currentStatus)}
+                </div>
+            `;
+        });
+
+        contentDiv.innerHTML = htmlContent;
+        panel.dataset.activeDrone = droneId;
+        panel.classList.add('open');
+    };
+
+    window.closeHealthPanel = function () {
+        const panel = document.getElementById('health-side-panel');
+        panel.classList.remove('open');
+        // panel.dataset.activeDrone = ""; // Optional: Boleh reset jika perlu
+    };
+
+    // 5. Pastikan panel tutup jika pengguna klik di peta (optional UX improvement)
+    document.addEventListener('click', function (e) {
+        const panel = document.getElementById('health-side-panel');
+        const fixedPlugin = document.querySelector('.fixed-plugin');
+
+        // Jika klik diluar panel health DAN diluar sidebar utama, tutup panel health
+        if (!panel.contains(e.target) && !fixedPlugin.contains(e.target) && panel.classList.contains('open')) {
+            closeHealthPanel();
+        }
+    });
 });

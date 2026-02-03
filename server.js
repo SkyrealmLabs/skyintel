@@ -137,35 +137,35 @@ const upload = multer({
 
 // Configure storage for Library Files
 const libraryFileStorage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        // Pastikan folder ini wujud atau auto-create
-        const dir = path.join(__dirname, 'uploads/library_files');
-        if (!fs.existsSync(dir)){
-            fs.mkdirSync(dir, { recursive: true });
-        }
-        cb(null, dir);
-    },
-    filename: function (req, file, cb) {
-        // Nama unik: file-timestamp-random.ext
-        const ext = path.extname(file.originalname);
-        const uniqueName = `file-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
-        cb(null, uniqueName);
+  destination: function (req, file, cb) {
+    // Pastikan folder ini wujud atau auto-create
+    const dir = path.join(__dirname, 'uploads/library_files');
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    // Nama unik: file-timestamp-random.ext
+    const ext = path.extname(file.originalname);
+    const uniqueName = `file-${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+    cb(null, uniqueName);
+  }
 });
 
 const uploadLibraryFile = multer({
-    storage: libraryFileStorage,
-    limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
-    fileFilter: function (req, file, cb) {
-        const fileTypes = /jpeg|jpg|png|pdf/;
-        const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = fileTypes.test(file.mimetype);
+  storage: libraryFileStorage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // Max 5MB
+  fileFilter: function (req, file, cb) {
+    const fileTypes = /jpeg|jpg|png|pdf/;
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = fileTypes.test(file.mimetype);
 
-        if (mimetype && extname) {
-            return cb(null, true);
-        }
-        cb(new Error("Only JPEG, PNG, and PDF formats are allowed!"));
+    if (mimetype && extname) {
+      return cb(null, true);
     }
+    cb(new Error("Only JPEG, PNG, and PDF formats are allowed!"));
+  }
 });
 
 let joystickData = {}; // Store joystick data globally
@@ -1332,9 +1332,13 @@ app.post('/api/library/add', (req, res) => {
   );
 });
 
-// Get Library Summary API
+// server.js
+
+// API: Get Library Summary (Updated for Individual Status)
 app.get('/api/library/summary', (req, res) => {
-    const sql = `
+  const userId = req.query.user_id; // Terima user_id dari parameter
+
+  const sql = `
               SELECT 
                 l.id AS library_id,
                 l.name AS document_name,
@@ -1346,7 +1350,8 @@ app.get('/api/library/summary', (req, res) => {
                 CASE 
                   WHEN COUNT(ua.id) > 0 THEN ROUND((COUNT(CASE WHEN ua.is_acknowledged = 1 THEN 1 END) / COUNT(ua.id)) * 100)
                   ELSE 0 
-                END AS ack_percentage
+                END AS ack_percentage,
+                MAX(CASE WHEN ua.user_id = ? THEN ua.is_acknowledged ELSE 0 END) AS user_ack_status
               FROM library l
               LEFT JOIN user u ON l.user_id = u.id
               LEFT JOIN files f ON f.id = (
@@ -1359,149 +1364,149 @@ app.get('/api/library/summary', (req, res) => {
               GROUP BY l.id, f.id;
             `;
 
-    db.query(sql, (err, results) => {
-        if (err) {
-            console.error("Database Error:", err);
-            return res.status(500).json({ message: "Internal server error." });
-        }
-        res.json(results);
-    });
+  db.query(sql, [userId], (err, results) => {
+    if (err) {
+      console.error("Database Error:", err);
+      return res.status(500).json({ message: "Internal server error." });
+    }
+    res.json(results);
+  });
 });
 
 // API: Upload Library File
 app.post('/api/files/upload', uploadLibraryFile.single('file'), (req, res) => {
-    
-    // LANGKAH PENTING: Dapatkan connection tunggal dari pool
-    db.getConnection((err, connection) => {
+
+  // LANGKAH PENTING: Dapatkan connection tunggal dari pool
+  db.getConnection((err, connection) => {
+    if (err) {
+      console.error("Database connection failed:", err);
+      return res.status(500).json({ message: "Database connection error." });
+    }
+
+    try {
+      const { library_id, version, upload_user_id } = req.body;
+
+      // 1. Validasi Input
+      if (!req.file) {
+        connection.release(); // Jangan lupa release connection
+        return res.status(400).json({ message: "Sila upload fail." });
+      }
+      if (!library_id || !version || !upload_user_id) {
+        connection.release();
+        return res.status(400).json({ message: "Maklumat user_id, library_id, atau version tidak lengkap." });
+      }
+
+      const fileName = req.file.filename;
+      const filePath = req.file.path; // Simpan path penuh atau relative ikut preference
+      const timestamp = new Date();   // Atau guna helper function anda
+
+      // 2. Mulakan Transaction pada 'connection' (bukan 'db')
+      connection.beginTransaction((err) => {
         if (err) {
-            console.error("Database connection failed:", err);
-            return res.status(500).json({ message: "Database connection error." });
+          connection.release();
+          console.error("Transaction Error:", err);
+          return res.status(500).json({ message: "Transaction failed." });
         }
 
-        try {
-            const { library_id, version, upload_user_id } = req.body;
-
-            // 1. Validasi Input
-            if (!req.file) {
-                connection.release(); // Jangan lupa release connection
-                return res.status(400).json({ message: "Sila upload fail." });
-            }
-            if (!library_id || !version || !upload_user_id) {
-                connection.release();
-                return res.status(400).json({ message: "Maklumat user_id, library_id, atau version tidak lengkap." });
-            }
-
-            const fileName = req.file.filename;
-            const filePath = req.file.path; // Simpan path penuh atau relative ikut preference
-            const timestamp = new Date();   // Atau guna helper function anda
-
-            // 2. Mulakan Transaction pada 'connection' (bukan 'db')
-            connection.beginTransaction((err) => {
-                if (err) {
-                    connection.release();
-                    console.error("Transaction Error:", err);
-                    return res.status(500).json({ message: "Transaction failed." });
-                }
-
-                // STEP A: Insert ke table 'files'
-                // NOTA: Guna 'isDeleted' ikut screenshot MySQL Workbench anda
-                const insertFileQuery = `
+        // STEP A: Insert ke table 'files'
+        // NOTA: Guna 'isDeleted' ikut screenshot MySQL Workbench anda
+        const insertFileQuery = `
                     INSERT INTO files (file_name, user_id, library_id, file_path, version, isDeleted, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, 0, ?, ?)
                 `;
 
-                connection.query(insertFileQuery, [fileName, upload_user_id, library_id, filePath, version, timestamp, timestamp], (err, result) => {
-                    if (err) {
-                        return connection.rollback(() => {
-                            connection.release();
-                            console.error("Insert File Error:", err);
-                            res.status(500).json({ message: "Gagal menyimpan info fail." });
-                        });
-                    }
+        connection.query(insertFileQuery, [fileName, upload_user_id, library_id, filePath, version, timestamp, timestamp], (err, result) => {
+          if (err) {
+            return connection.rollback(() => {
+              connection.release();
+              console.error("Insert File Error:", err);
+              res.status(500).json({ message: "Gagal menyimpan info fail." });
+            });
+          }
 
-                    const newFileId = result.insertId;
+          const newFileId = result.insertId;
 
-                    // STEP B: Cari member yang aktif (untuk assign task acknowledge)
-                    // Anda boleh ubah WHERE clause ikut logic role sistem anda
-                    const getMembersQuery = `SELECT id FROM user WHERE user_role_id IN (1, 2, 4)`; 
+          // STEP B: Cari member yang aktif (untuk assign task acknowledge)
+          // Anda boleh ubah WHERE clause ikut logic role sistem anda
+          const getMembersQuery = `SELECT id FROM user WHERE user_role_id IN (1, 2, 4)`;
 
-                    connection.query(getMembersQuery, (err, members) => {
-                        if (err) {
-                            return connection.rollback(() => {
-                                connection.release();
-                                console.error("Get Members Error:", err);
-                                res.status(500).json({ message: "Gagal mendapatkan senarai ahli." });
-                            });
-                        }
+          connection.query(getMembersQuery, (err, members) => {
+            if (err) {
+              return connection.rollback(() => {
+                connection.release();
+                console.error("Get Members Error:", err);
+                res.status(500).json({ message: "Gagal mendapatkan senarai ahli." });
+              });
+            }
 
-                        // Jika tiada member, commit sahaja fail tersebut
-                        if (members.length === 0) {
-                            connection.commit((err) => {
-                                if (err) {
-                                    return connection.rollback(() => {
-                                        connection.release();
-                                        res.status(500).json({ message: "Commit error." });
-                                    });
-                                }
-                                connection.release();
-                                return res.status(201).json({ message: "Fail diupload (Tiada ahli untuk di-assign)." });
-                            });
-                            return;
-                        }
+            // Jika tiada member, commit sahaja fail tersebut
+            if (members.length === 0) {
+              connection.commit((err) => {
+                if (err) {
+                  return connection.rollback(() => {
+                    connection.release();
+                    res.status(500).json({ message: "Commit error." });
+                  });
+                }
+                connection.release();
+                return res.status(201).json({ message: "Fail diupload (Tiada ahli untuk di-assign)." });
+              });
+              return;
+            }
 
-                        // STEP C: Insert ke 'user_acknowledgement'
-                        // NOTA: Guna 'files_id' ikut screenshot MySQL Workbench anda
-                        const acknowledgementData = members.map(m => [m.id, newFileId, 0, timestamp, timestamp]);
-                        
-                        const insertAckQuery = `
+            // STEP C: Insert ke 'user_acknowledgement'
+            // NOTA: Guna 'files_id' ikut screenshot MySQL Workbench anda
+            const acknowledgementData = members.map(m => [m.id, newFileId, 0, timestamp, timestamp]);
+
+            const insertAckQuery = `
                             INSERT INTO user_acknowledgement (user_id, files_id, is_acknowledged, created_at, updated_at)
                             VALUES ?
                         `;
 
-                        connection.query(insertAckQuery, [acknowledgementData], (err) => {
-                            if (err) {
-                                return connection.rollback(() => {
-                                    connection.release();
-                                    console.error("Insert Ack Error:", err);
-                                    res.status(500).json({ message: "Gagal create acknowledgement records." });
-                                });
-                            }
-
-                            // 3. SEMUA BERJAYA -> COMMIT
-                            connection.commit((err) => {
-                                if (err) {
-                                    return connection.rollback(() => {
-                                        connection.release();
-                                        console.error("Commit Error:", err);
-                                        res.status(500).json({ message: "Commit transaction failed." });
-                                    });
-                                }
-
-                                connection.release(); // Pulangkan connection ke pool
-                                res.status(201).json({
-                                    message: "Fail berjaya diupload dan task acknowledgement telah dicipta.",
-                                    fileId: newFileId
-                                });
-                            });
-                        });
-                    });
+            connection.query(insertAckQuery, [acknowledgementData], (err) => {
+              if (err) {
+                return connection.rollback(() => {
+                  connection.release();
+                  console.error("Insert Ack Error:", err);
+                  res.status(500).json({ message: "Gagal create acknowledgement records." });
                 });
-            });
+              }
 
-        } catch (error) {
-            // Catch error lain (cth: coding error)
-            if (connection) connection.release();
-            console.error("Server Exception:", error);
-            res.status(500).json({ message: "Internal server error." });
-        }
-    });
+              // 3. SEMUA BERJAYA -> COMMIT
+              connection.commit((err) => {
+                if (err) {
+                  return connection.rollback(() => {
+                    connection.release();
+                    console.error("Commit Error:", err);
+                    res.status(500).json({ message: "Commit transaction failed." });
+                  });
+                }
+
+                connection.release(); // Pulangkan connection ke pool
+                res.status(201).json({
+                  message: "Fail berjaya diupload dan task acknowledgement telah dicipta.",
+                  fileId: newFileId
+                });
+              });
+            });
+          });
+        });
+      });
+
+    } catch (error) {
+      // Catch error lain (cth: coding error)
+      if (connection) connection.release();
+      console.error("Server Exception:", error);
+      res.status(500).json({ message: "Internal server error." });
+    }
+  });
 });
 
 // API: Get Library Folder Details by ID
 app.get('/api/library/folder-details/:library_id', (req, res) => {
-    const libraryId = req.params.library_id;
+  const libraryId = req.params.library_id;
 
-    const sql = `
+  const sql = `
         SELECT 
           f.version,
           u.name AS author,
@@ -1514,57 +1519,57 @@ app.get('/api/library/folder-details/:library_id', (req, res) => {
         LIMIT 2; 
     `;
 
-    db.query(sql, [libraryId], (err, results) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: "Database error" });
-        }
+  db.query(sql, [libraryId], (err, results) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
 
-        // Default structure (kosong)
-        const response = {
-            Main: { version: '-', author: '-', date: '-', timeAgo: '-', hasFile: false },
-            Archieve: { version: '-', author: '-', date: '-', timeAgo: '-', hasFile: false }
-        };
+    // Default structure (kosong)
+    const response = {
+      Main: { version: '-', author: '-', date: '-', timeAgo: '-', hasFile: false },
+      Archieve: { version: '-', author: '-', date: '-', timeAgo: '-', hasFile: false }
+    };
 
-        // LOGIK BARU:
-        // Result[0] adalah fail paling latest -> Masuk ke Main
-        if (results.length > 0) {
-            const mainFile = results[0];
-            response.Main = {
-                version: mainFile.version,
-                author: mainFile.author,
-                date: mainFile.updated_at,
-                timeAgo: formatTimeAgo(mainFile.minutes_ago),
-                hasFile: true
-            };
-        }
+    // LOGIK BARU:
+    // Result[0] adalah fail paling latest -> Masuk ke Main
+    if (results.length > 0) {
+      const mainFile = results[0];
+      response.Main = {
+        version: mainFile.version,
+        author: mainFile.author,
+        date: mainFile.updated_at,
+        timeAgo: formatTimeAgo(mainFile.minutes_ago),
+        hasFile: true
+      };
+    }
 
-        // Result[1] adalah fail kedua latest -> Masuk ke Archieve
-        if (results.length > 1) {
-            const archiveFile = results[1];
-            response.Archieve = {
-                version: archiveFile.version,
-                author: archiveFile.author,
-                date: archiveFile.updated_at,
-                timeAgo: formatTimeAgo(archiveFile.minutes_ago),
-                hasFile: true
-            };
-        }
+    // Result[1] adalah fail kedua latest -> Masuk ke Archieve
+    if (results.length > 1) {
+      const archiveFile = results[1];
+      response.Archieve = {
+        version: archiveFile.version,
+        author: archiveFile.author,
+        date: archiveFile.updated_at,
+        timeAgo: formatTimeAgo(archiveFile.minutes_ago),
+        hasFile: true
+      };
+    }
 
-        res.json(response);
-    });
+    res.json(response);
+  });
 });
 
 // API: Get Library File List API
 app.get('/api/library/files', (req, res) => {
-    const { library_id, folder_type, user_id } = req.query;
+  const { library_id, folder_type, user_id } = req.query;
 
-    if (!library_id || !folder_type) {
-        return res.status(400).json({ message: "Missing library_id or folder_type" });
-    }
+  if (!library_id || !folder_type) {
+    return res.status(400).json({ message: "Missing library_id or folder_type" });
+  }
 
-    // 1. Tarik semua fail aktif untuk library ini, susun dari paling baru
-    const sql = `
+  // 1. Tarik semua fail aktif untuk library ini, susun dari paling baru
+  const sql = `
         SELECT 
           f.id, 
           f.file_name, 
@@ -1580,60 +1585,189 @@ app.get('/api/library/files', (req, res) => {
         ORDER BY f.created_at DESC
     `;
 
-    db.query(sql, [user_id, library_id], (err, files) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ message: "Database error" });
-        }
+  db.query(sql, [user_id, library_id], (err, files) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
 
-        let filteredFiles = [];
+    let filteredFiles = [];
 
-        // 2. Logik Pemisahan Main vs Archieve
-        if (files.length > 0) {
-            if (folder_type === 'Main') {
-                // Main folder hanya ambil fail PERTAMA (paling latest)
-                filteredFiles = [files[0]]; 
-            } else if (folder_type === 'Archieve') {
-                // Archieve folder ambil SEMUA fail KECUALI yang pertama
-                filteredFiles = files.slice(1); 
-            }
-        }
+    // 2. Logik Pemisahan Main vs Archieve
+    if (files.length > 0) {
+      if (folder_type === 'Main') {
+        // Main folder hanya ambil fail PERTAMA (paling latest)
+        filteredFiles = [files[0]];
+      } else if (folder_type === 'Archieve') {
+        // Archieve folder ambil SEMUA fail KECUALI yang pertama
+        filteredFiles = files.slice(1);
+      }
+    }
 
-        res.json(filteredFiles);
-    });
+    res.json(filteredFiles);
+  });
 });
 
 // API: File Acknowledgement
 app.post('/api/files/acknowledge', (req, res) => {
-    const { user_id, file_id } = req.body;
-    console.log("🚀 ~ file_id:", file_id)
-    console.log("🚀 ~ user_id:", user_id)
+  const { user_id, file_id } = req.body;
 
-    if (!user_id || !file_id) {
-        return res.status(400).json({ message: "Missing user_id or file_id" });
-    }
+  if (!user_id || !file_id) {
+    return res.status(400).json({ message: "Missing user_id or file_id" });
+  }
 
-    const timestamp = getCurrentTimestamp(); // Guna helper function timestamp anda
+  const timestamp = getCurrentTimestamp(); 
 
-    // Kita update rekod sedia ada dalam table user_acknowledgement
-    // Pastikan nama kolum 'file_id' atau 'files_id' ikut database anda
-    const sql = `
+  const sql = `
         UPDATE user_acknowledgement 
         SET is_acknowledged = 1, updated_at = ? 
         WHERE user_id = ? AND files_id = ?
     `;
 
-    db.query(sql, [timestamp, user_id, file_id], (err, result) => {
+  db.query(sql, [timestamp, user_id, file_id], (err, result) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ message: "Database error" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "Acknowledgement record not found." });
+    }
+
+    res.json({ message: "File acknowledged successfully", date: timestamp });
+  });
+});
+
+// API: Delete Library File (Soft Delete)
+app.post('/api/library/files/delete', (req, res) => {
+  const { file_id } = req.body;
+
+  // 1. Validasi Input
+  if (!file_id) {
+    return res.status(400).json({ message: "File ID is required" });
+  }
+
+  const timestamp = getCurrentTimestamp();
+
+  const query = `UPDATE files SET isDeleted = 1, updated_at = ? WHERE id = ?`;
+
+  db.query(query, [timestamp, file_id], (err, result) => {
+    if (err) {
+      console.error("Delete File Error:", err);
+      return res.status(500).json({ message: "Database error while deleting file." });
+    }
+
+    // Semak jika ID wujud
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: "File not found or already deleted." });
+    }
+
+    res.status(200).json({ message: "File deleted successfully" });
+  });
+});
+
+// API: Update Library Folder Name
+app.put('/api/library/update', (req, res) => {
+    const { id, name } = req.body;
+
+    // 1. Validasi Input
+    if (!id || !name) {
+        return res.status(400).json({ message: "Library ID and Name are required" });
+    }
+
+    const timestamp = getCurrentTimestamp();
+
+    // 2. Update Database
+    const query = `UPDATE library SET name = ?, updated_at = ? WHERE id = ?`;
+
+    db.query(query, [name, timestamp, id], (err, result) => {
         if (err) {
-            console.error(err);
+            console.error("Update Library Error:", err);
             return res.status(500).json({ message: "Database error" });
         }
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ message: "Acknowledgement record not found." });
+            return res.status(404).json({ message: "Library folder not found." });
         }
 
-        res.json({ message: "File acknowledged successfully", date: timestamp });
+        res.status(200).json({ message: "Folder name updated successfully" });
+    });
+});
+
+// API: Soft Delete Library Folder
+app.post('/api/library/delete', (req, res) => {
+    const { library_id } = req.body;
+
+    // 1. Validasi Input
+    if (!library_id) {
+        return res.status(400).json({ message: "Library ID is required" });
+    }
+
+    const timestamp = getCurrentTimestamp();
+
+    const query = `UPDATE library SET isDeleted = 1, updated_at = ? WHERE id = ?`;
+
+    db.query(query, [timestamp, library_id], (err, result) => {
+        if (err) {
+            console.error("Delete Library Error:", err);
+            return res.status(500).json({ message: "Database error" });
+        }
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({ message: "Library folder not found." });
+        }
+
+        // Optional: Anda mungkin mahu soft-delete semua fail di dalam folder ini juga
+        // Tetapi buat masa ini, memadai dengan menyembunyikan foldernya sahaja.
+
+        res.status(200).json({ message: "Folder deleted successfully" });
+    });
+});
+
+// API: Get Acknowledgement Report for a Library Folder
+app.get('/api/library/report/:library_id', (req, res) => {
+    const libraryId = req.params.library_id;
+
+    // 1. Cari fail terkini yang aktif dalam library ini
+    const findFileQuery = `
+        SELECT id FROM files 
+        WHERE library_id = ? AND isDeleted = 0 
+        ORDER BY created_at DESC LIMIT 1
+    `;
+
+    db.query(findFileQuery, [libraryId], (err, fileResult) => {
+        if (err) return res.status(500).json({ message: "Database error" });
+
+        // Jika folder kosong (tiada fail)
+        if (fileResult.length === 0) {
+            return res.json({ hasFile: false, data: [] });
+        }
+
+        const fileId = fileResult[0].id;
+
+        // 2. Dapatkan senarai user (Admin/Member) dan status acknowledgement mereka
+        // Kita join table User dengan User_Acknowledgement
+        const reportQuery = `
+            SELECT 
+                u.name AS user_name,
+                r.name AS role_name,
+                COALESCE(ua.is_acknowledged, 0) AS status,
+                ua.updated_at AS ack_date
+            FROM user u
+            INNER JOIN user_role r ON u.user_role_id = r.id
+            LEFT JOIN user_acknowledgement ua ON u.id = ua.user_id AND ua.files_id = ?
+            WHERE u.user_role_id IN (1, 2, 4) AND u.isDeleted = 0 AND u.isDeactive = 0
+            ORDER BY u.name ASC
+        `;
+
+        db.query(reportQuery, [fileId], (err, reportData) => {
+            if (err) return res.status(500).json({ message: "Database error fetching report" });
+
+            res.json({ 
+                hasFile: true, 
+                data: reportData 
+            });
+        });
     });
 });
 
@@ -1642,11 +1776,11 @@ app.post('/api/files/acknowledge', (req, res) => {
 // ============================================================================================
 
 function formatTimeAgo(minutes) {
-    if (minutes < 1) return "Just now";
-    if (minutes < 60) return `${minutes} minutes ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} hours ago`;
-    return `${Math.floor(hours / 24)} days ago`;
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hours ago`;
+  return `${Math.floor(hours / 24)} days ago`;
 }
 
 // Haversine Function

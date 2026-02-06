@@ -965,7 +965,7 @@ document.addEventListener("DOMContentLoaded", function () {
             { key: 'downwardCamera', label: 'Downward Camera', icon: 'bi-camera-video-fill' },
             { key: 'winchModule', label: 'Winch Module', icon: 'bi-gear-wide-connected' },
             { key: 'PRSmodule', label: 'PRS Module', icon: 'bi-shield-check' }, // Parachute/Safety
-            { key: 'HMMmodule', label: 'Health Monitoring', icon: 'bi-heart-pulse' },
+            { key: 'HMBmodule', label: 'Health Monitoring', icon: 'bi-heart-pulse' },
             { key: 'batterySOH', label: 'Battery SOH', icon: 'bi-battery-half' }
         ];
 

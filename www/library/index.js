@@ -21,18 +21,30 @@ let currentReportData = [];
 let currentReportTitle = "Report";
 
 // --- INTEGRASI API: MENGAMBIL DATA SUMMARY ---
+// --- INTEGRASI API: MENGAMBIL DATA SUMMARY ---
 async function loadLibrarySummary() {
     try {
-        // 1. Dapatkan info user semasa dari LocalStorage
+        // 1. Dapatkan info user
         const userData = JSON.parse(localStorage.getItem("user") || "{}");
         const currentUserId = userData.id;
         const currentUserRole = userData.role; // 1: Admin, 2: SuperAdmin, 4: Member
 
-        // 2. Pass user_id ke API
+        // 2. Logic Hide/Show HEADER 'Action'
+        // Kita cari header terakhir dalam table Library
+        const libraryTable = document.querySelector('#libraryTableBody').closest('table');
+        if (libraryTable) {
+            const actionHeader = libraryTable.querySelector('thead th:last-child');
+            if (actionHeader) {
+                // Jika Member, hide header. Jika Admin, show.
+                actionHeader.style.display = (currentUserRole === 4) ? 'none' : '';
+            }
+        }
+
+        // 3. Panggil API
         const response = await fetch(`/api/library/summary?user_id=${currentUserId}`);
         const data = await response.json();
 
-        const tableBody = document.querySelector('table tbody');
+        const tableBody = document.getElementById('libraryTableBody');
         if (!tableBody) return;
 
         tableBody.innerHTML = ''; 
@@ -45,22 +57,18 @@ async function loadLibrarySummary() {
             const encrypted = await encryptionID(item.library_id);
             row.dataset.href = `./folder?id=${encodeURIComponent(encrypted)}&name=${encodeURIComponent(item.document_name)}`;
 
-            // --- LOGIC UI STATUS ---
+            // --- A. LOGIC UTAMA: STATUS ---
             let statusColumnContent = '';
 
             if (currentUserRole === 4) { 
-                // === VIEW UNTUK MEMBER (Status Diri Sendiri) ===
+                // View Member
                 if (item.user_ack_status === 1) {
-                    statusColumnContent = `
-                        <span class="badge badge-sm bg-gradient-success">Acknowledged</span>
-                    `;
+                    statusColumnContent = `<span class="badge badge-sm bg-gradient-success">Acknowledged</span>`;
                 } else {
-                    statusColumnContent = `
-                        <span class="badge badge-sm bg-gradient-warning">Pending</span>
-                    `;
+                    statusColumnContent = `<span class="badge badge-sm bg-gradient-warning">Pending</span>`;
                 }
             } else {
-                // === VIEW UNTUK ADMIN/SUPERADMIN (Progress Bar Keseluruhan) ===
+                // View Admin
                 statusColumnContent = `
                     <div class="d-flex align-items-center justify-content-center">
                         <div class="progress-wrapper d-flex align-items-center gap-2">
@@ -77,7 +85,53 @@ async function loadLibrarySummary() {
                 `;
             }
 
-            // Masukkan content ke dalam row HTML
+            // --- B. LOGIC UTAMA: ACTION COLUMN (TITIK TIGA) ---
+            // Ini bahagian penting yang sebelum ini mungkin tertinggal.
+            // Kita set variable kosong dahulu.
+            let actionColumnHTML = '';
+
+            // HANYA jika BUKAN member, barulah kita isi variable ini dengan HTML dropdown.
+            if (currentUserRole !== 4) {
+                actionColumnHTML = `
+                <td class="align-middle text-center">
+                    <div class="dropdown">
+                        <button class="btn btn-link text-secondary mb-0" 
+                                type="button" 
+                                id="dropdownMenuButton-${item.library_id}" 
+                                data-bs-toggle="dropdown" 
+                                aria-expanded="false"
+                                onclick="event.stopPropagation()"> <i class="material-icons text-lg">more_vert</i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end px-2 py-3" aria-labelledby="dropdownMenuButton-${item.library_id}">
+                            <li>
+                                <a class="dropdown-item border-radius-md" href="javascript:;" 
+                                onclick="viewReport(${item.library_id}, event)">
+                                    <i class="material-icons text-sm me-2">assessment</i> View Report
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item border-radius-md" href="javascript:;" 
+                                onclick="editLibrary(${item.library_id}, '${item.document_name}', event)">
+                                    <i class="material-icons text-sm me-2">edit</i> Edit
+                                </a>
+                            </li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li>
+                                <a class="dropdown-item border-radius-md text-danger" href="javascript:;" 
+                                onclick="deleteLibrary(${item.library_id}, event)">
+                                    <i class="material-icons text-sm me-2">delete</i> Delete
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </td>`;
+            }
+
+            // --- C. MASUKKAN KE DALAM ROW ---
+            // Perhatikan bahagian ${actionColumnHTML} di bawah sekali.
+            // Jika user member, variable itu kosong, jadi <td> tidak akan terhasil.
             row.innerHTML = `
                 <td>
                     <div class="d-flex px-2 py-1">
@@ -97,42 +151,7 @@ async function loadLibrarySummary() {
                     ${statusColumnContent}
                 </td>
 
-                <td class="align-middle text-center">
-                    <div class="dropdown">
-                        <button class="btn btn-link text-secondary mb-0" 
-                                type="button" 
-                                id="dropdownMenuButton-${item.library_id}" 
-                                data-bs-toggle="dropdown" 
-                                aria-expanded="false"
-                                onclick="event.stopPropagation()"> <i class="material-icons text-lg">more_vert</i>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end px-2 py-3" aria-labelledby="dropdownMenuButton-${item.library_id}">
-                            <li>
-                                <a class="dropdown-item border-radius-md" href="javascript:;" 
-                                onclick="viewReport(${item.library_id}, event)">
-                                    <i class="material-icons text-sm me-2">assessment</i> View Report
-                                </a>
-                            </li>
-                            ${currentUserRole !== 4 ? `
-                            <li>
-                                <a class="dropdown-item border-radius-md" href="javascript:;" 
-                                onclick="editLibrary(${item.library_id}, '${item.document_name}', event)">
-                                    <i class="material-icons text-sm me-2">edit</i> Edit
-                                </a>
-                            </li>
-                            <li>
-                                <hr class="dropdown-divider">
-                            </li>
-                            <li>
-                                <a class="dropdown-item border-radius-md text-danger" href="javascript:;" 
-                                onclick="deleteLibrary(${item.library_id}, event)">
-                                    <i class="material-icons text-sm me-2">delete</i> Delete
-                                </a>
-                            </li>
-                            ` : ''}
-                        </ul>
-                    </div>
-                </td>
+                ${actionColumnHTML} 
             `;
 
             row.addEventListener('click', (e) => {
